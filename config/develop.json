@@ -1,0 +1,13 @@
+{
+    "mongodb": {
+        "url": "mongodb://10.8.1.1:27017/",
+        "db": "colymer",
+        "options": {
+            "poolSize": 5,
+            "useUnifiedTopology": true
+        }
+    },
+    "attachment":{
+        "dirname":"../public/attachment"
+    }
+}
