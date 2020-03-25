@@ -1,0 +1,331 @@
+swagger: "2.0"
+info:
+  description: "Lightweight Content Polymerizing Engine & Management System"
+  title: Colymer API
+  version: "1.0"
+host: "127.0.0.1:3000"
+basePath: /api
+tags:
+  - name: document
+    description: "A single content item such as a web page, an article, an email or a tweet etc."
+schemes:
+  - http
+  - https
+paths:
+  /document/{bucket}/{id}:
+    get:
+      tags: 
+        - document
+      summary: "Get document"
+      description: "Get document"
+      operationId: "getDocument"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "bucket"
+        in: "path"
+        description: "Bucket name"
+        required: true
+        type: "string"
+      - name: "id"
+        in: "path"
+        description: "Document id"
+        required: true
+        type: "string"
+      - name: "with_archives"
+        in: "query"
+        description: "Whether return archive versions or not."
+        type: "integer"
+        default: 0
+        enum:
+          - 0
+          - 1
+      - name: "archives_index"
+        in: "query"
+        description: "If positive, it returns a specific archive verison. It will be ignore when `with_archives` is non-zero."
+        type: "integer"
+        default: 0
+      responses:
+        200:
+          description: "Success"
+          schema:
+            $ref: "#/definitions/Document"
+        404:
+          description: "Not Found"
+        500:
+          description: "Error"
+    post:
+      tags: 
+        - document
+      summary: "Update document"
+      description: "Update document. It will archive the current version document into `archives`."
+      operationId: "postDocument"
+      consumer:
+      - "application/json"
+      parameters:
+      - name: "bucket"
+        in: "path"
+        description: "Bucket name"
+        required: true
+        type: "string"
+      - name: "id"
+        in: "path"
+        description: "Document id"
+        required: true
+        type: "string"
+      - name: "body"
+        in: "body"
+        description: "Post Document object"
+        required: true
+        schema:
+          $ref: "#/definitions/UpdateDocument"
+      responses:
+        204:
+          description: "Success"
+        404:
+          description: "Not Found"
+        409:
+          description: "Conflict"
+        500:
+          description: "Error"
+    put:
+      tags: 
+        - document
+      summary: "Insert/replace document"
+      description: "Insert/replace document"
+      operationId: "putDocument"
+      consumer:
+      - "application/json"
+      parameters:
+      - name: "bucket"
+        in: "path"
+        description: "Bucket name"
+        required: true
+        type: "string"
+      - name: "id"
+        in: "path"
+        description: "Document id"
+        required: true
+        type: "string"
+      - name: "body"
+        in: "body"
+        description: "Put Document object"
+        schema:
+          $ref: "#/definitions/UpdateDocument"
+      responses:
+        204:
+          description: "Success"
+        404:
+          description: "Not Found"
+        409:
+          description: "Conflict"
+        500:
+          description: "Error"
+    delete:
+      tags: 
+        - document
+      summary: "Delete document"
+      description: "Delete document"
+      operationId: "deleteDocument"
+      parameters:
+      - name: "bucket"
+        in: "path"
+        description: "Bucket name"
+        required: true
+        type: "string"
+      - name: "id"
+        in: "path"
+        description: "Document id"
+        required: true
+        type: "string"
+      responses:
+        204:
+          description: "Success"
+        404:
+          description: "Not Found"
+        500:
+          description: "Error"
+definitions:
+  UpdateDocument:
+    type: "object"
+    properties:
+      author_id:
+        type: "string"
+      author_name:
+        type: "string"
+      is_html:
+        type: "boolean"
+        default: false
+      title:
+        type: "string"
+      text:
+        type: "string"
+      time:
+        type: "integer"
+        format: "int64"
+      category:
+        type: "string"
+      url:
+        type: "string"
+      labels:
+        type: "array"
+        items: 
+          type: "string"
+      attachments:
+        type: "array"
+        items:
+          type: "object"
+          properties:
+            filename:
+              type: "string"
+            encoding:
+              type: "string"
+              description: "File encoding type"
+              enum:
+                - "utf8"
+                - "utf16le"
+                - "latin1"
+                - "base64"
+                - "hex"
+            content:
+              type: "string"
+          required:
+            - filename
+            - encoding
+            - content
+      version:
+        description: "`0` implies an insert operation."
+        type: "integer"
+    required:
+      - author_id
+      - author_name
+      - title
+      - text
+      - time
+      - category
+      - url
+      - labels
+      - attachments
+      - version
+  Document:
+    type: "object"
+    properties:
+      id:
+        type: "string"
+      author_id:
+        type: "string"
+      author_name:
+        type: "string"
+      is_html:
+        type: "boolean"
+        default: false
+      title:
+        type: "string"
+      text:
+        type: "string"
+      time:
+        type: "integer"
+        format: "int64"
+      category:
+        type: "string"
+      url:
+        type: "string"
+      labels:
+        type: "array"
+        items: 
+          type: "string"
+      attachments:
+        type: "array"
+        items:
+          type: "object"
+          properties:
+            url:
+              type: "string"
+              description: "This field only presents in `GET` method, not in database."
+            filename:
+              type: "string"
+            extension:
+              type: "string"
+            content_type:
+              type: "string"
+          required:
+            - url
+            - filename
+            - extension
+            - content_type
+      archives_count:
+        type: "integer"
+      archives:
+        description: "This field will not present when `with_archives` is zero."
+        type: "array"
+        items:
+          type: "object"
+          properties:
+            author_id:
+              type: "string"
+            author_name:
+              type: "string"
+            is_html:
+              type: "boolean"
+              default: false
+            title:
+              type: "string"
+            text:
+              type: "string"
+            time:
+              type: "integer"
+              format: "int64"
+            category:
+              type: "string"
+            url:
+              type: "string"
+            labels:
+              type: "array"
+              items: 
+                type: "string"
+            attachments:
+              type: "array"
+              items:
+                type: "object"
+                properties:
+                  url:
+                    type: "string"
+                    description: "This field only presents in `GET` method, not in database."
+                  filename:
+                    type: "string"
+                  extension:
+                    type: "string"
+                  content_type:
+                    type: "string"
+                required:
+                  - url
+                  - filename
+                  - extension
+                  - content_type
+          required:
+            - author_id
+            - author_name
+            - is_html
+            - title
+            - text
+            - time
+            - category
+            - url
+            - labels
+            - attachments
+      version:
+        type: "integer"
+    required:
+      - id
+      - author_id
+      - author_name
+      - is_html
+      - title
+      - text
+      - time
+      - category
+      - url
+      - labels
+      - attachments
+      - archives_count
+      - version
