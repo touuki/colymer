@@ -1,4 +1,6 @@
 var config = require('./develop.json');
+var path = require('path');
+
 if (typeof config.attachment === 'undefined') {
     config.attachment = {};
 }

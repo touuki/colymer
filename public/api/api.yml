@@ -1,0 +1,321 @@
+swagger: "2.0"
+info:
+  description: "Lightweight Content Polymerizing Engine & Management System"
+  title: Colymer API
+  version: "1.0"
+basePath: /api
+tags:
+  - name: document
+    description: "A document contains content, metadata and archives."
+  - name: content
+    description: "A single content item such as a web page, an article, an email or a tweet etc."
+  - name: archive
+    description: "History version of the content."
+  - name: metadata
+paths:
+  /document/{collection}/{id}:
+    delete:
+      tags:
+        - document
+      summary: "Delete content"
+      description: "Delete content"
+      operationId: "deleteContent"
+      parameters:
+      - name: "collection"
+        in: "path"
+        description: "Collection name"
+        required: true
+        type: "string"
+      - name: "id"
+        in: "path"
+        description: "Document id"
+        required: true
+        type: "string"
+      responses:
+        204:
+          description: "Success"
+        404:
+          description: "Not Found"
+        500:
+          description: "Error"
+  /document/{collection}/{id}/content:
+    get:
+      tags: 
+        - content
+      summary: "Get content"
+      description: "Get content"
+      operationId: "getContent"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "collection"
+        in: "path"
+        description: "Collection name"
+        required: true
+        type: "string"
+      - name: "id"
+        in: "path"
+        description: "Document id"
+        required: true
+        type: "string"
+      responses:
+        200:
+          description: "Success"
+          schema:
+            $ref: "#/definitions/Content"
+        404:
+          description: "Not Found"
+        500:
+          description: "Error"
+    post:
+      tags: 
+        - content
+      summary: "Update and archive content"
+      description: "Update content and archive the original version into `archives`."
+      operationId: "postContent"
+      consumer:
+      - "application/json"
+      parameters:
+      - name: "collection"
+        in: "path"
+        description: "Collection name"
+        required: true
+        type: "string"
+      - name: "id"
+        in: "path"
+        description: "Document id"
+        required: true
+        type: "string"
+      - name: "body"
+        in: "body"
+        description: "Content object"
+        required: true
+        schema:
+          $ref: "#/definitions/Content"
+      responses:
+        204:
+          description: "Success"
+        404:
+          description: "Not Found"
+        500:
+          description: "Error"
+        503:
+          description: "Service Temporarily Unavailable"
+    put:
+      tags: 
+        - content
+      summary: "Insert/update content"
+      description: "Insert/update (no archive) content"
+      operationId: "putContent"
+      consumer:
+      - "application/json"
+      parameters:
+      - name: "collection"
+        in: "path"
+        description: "Collection name"
+        required: true
+        type: "string"
+      - name: "id"
+        in: "path"
+        description: "Document id"
+        required: true
+        type: "string"
+      - name: "body"
+        in: "body"
+        description: "Content object"
+        schema:
+          $ref: "#/definitions/Content"
+      responses:
+        204:
+          description: "Success"
+        404:
+          description: "Not Found"
+        409:
+          description: "Conflict"
+          schema:
+            $ref: "#/definitions/Content"
+        500:
+          description: "Error"
+  /document/{collection}/{id}/archive_count:
+    get:
+      tags: 
+        - archive
+      summary: "Get archive count"
+      description: "Get archive count"
+      operationId: "getArchiveCount"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "collection"
+        in: "path"
+        description: "Collection name"
+        required: true
+        type: "string"
+      - name: "id"
+        in: "path"
+        description: "Document id"
+        required: true
+        type: "string"
+      responses:
+        200:
+          description: "Success"
+          schema:
+            type: "object"
+            properties:
+              archive_count:
+                type: "integer"
+        404:
+          description: "Not Found"
+        500:
+          description: "Error"
+  /document/{collection}/{id}/archives:
+    get:
+      tags: 
+        - archive
+      summary: "Get archive array"
+      description: "Get archive array"
+      operationId: "getArchives"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "collection"
+        in: "path"
+        description: "Collection name"
+        required: true
+        type: "string"
+      - name: "id"
+        in: "path"
+        description: "Document id"
+        required: true
+        type: "string"
+      responses:
+        200:
+          description: "Success"
+          schema:
+            type: "array"
+            items:
+              $ref: "#/definitions/Content"
+        404:
+          description: "Not Found"
+        500:
+          description: "Error"
+  /document/{collection}/{id}/archive/{index}:
+    get:
+      tags: 
+        - archive
+      summary: "Get specific archive"
+      description: "Get specific archive version"
+      operationId: "getArchive"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "collection"
+        in: "path"
+        description: "Collection name"
+        required: true
+        type: "string"
+      - name: "id"
+        in: "path"
+        description: "Document id"
+        required: true
+        type: "string"
+      - name: "index"
+        in: "path"
+        description: "Index in archive array"
+        required: true
+        type: "integer"
+      responses:
+        200:
+          description: "Success"
+          schema:
+            $ref: "#/definitions/Content"
+        404:
+          description: "Not Found"
+        500:
+          description: "Error"
+definitions:
+  Content:
+    type: "object"
+    properties:
+      author_id:
+        type: "string"
+      author_name:
+        type: "string"
+      is_html:
+        type: "boolean"
+        default: false
+      title:
+        type: "string"
+      text:
+        type: "string"
+      time:
+        type: "integer"
+        format: "int64"
+      category:
+        type: "string"
+      url:
+        type: "string"
+      labels:
+        type: "array"
+        items: 
+          type: "string"
+      attachments:
+        type: "array"
+        items:
+          type: "object"
+          properties:
+            url:
+              type: "string"
+              description: "Only in `GET` method."
+            filename:
+              type: "string"
+            extname:
+              type: "string"
+            content_type:
+              type: "string"
+            encoding:
+              type: "string"
+              description: "File encoding type. Only in `POST`/`PUT` method."
+              enum:
+                - "utf8"
+                - "utf16le"
+                - "latin1"
+                - "base64"
+                - "hex"
+            content:
+              description: "File content. Only in `POST`/`PUT` method."
+              type: "string"
+          required:
+            - filename
+            - encoding
+            - content
+      version:
+        description: "Optimistic locking. Required for `PUT`, don't required for `POST`."
+        type: "integer"
+    required:
+      - author_id
+      - author_name
+      - is_html
+      - title
+      - text
+      - time
+      - category
+      - url
+      - labels
+      - attachments
+  Document:
+    type: "object"
+    properties:
+      _id:
+        type: "string"
+      content:
+        $ref: "#/definitions/Content"
+      metadata:
+        type: "object"
+        description: "Custom data. It can be used to organize the relationship between the content, store the raw data, or classify the content etc. The fields starting with `_` should be reserved for extension."
+      archives:
+        type: "array"
+        items:
+          $ref: "#/definitions/Content"
+      archive_count:
+        type: "integer"

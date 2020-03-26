@@ -1,128 +1,186 @@
-var fs = require('fs');
-var path = require('path');
-var mime = require('mime-types');
-var express = require('express');
-var router = express.Router();
+const express = require('express');
+const { checkSchema } = require('express-validator');
+const router = express.Router();
 
-var config = require('../config');
-var mongodb = require('../utils/mongo');
+const config = require('../config');
+const mongodb = require('../utils/mongo');
 
-var vaildate = function (obj, fn) {
-  for (const key in obj) {
-    if (!fn(obj[key])) {
-      throw new Error("Invaild " + key + ": " + obj[key] + ".");
-    }
-  }
-}
+const contentValidation = checkSchema({
+  index: {
+    in: 'params',
+    isInt: true,
+    toInt: true,
+  },
+  author_id: {
+    in: 'body',
+    isString: true,
+    trim: true,
+  },
+  author_name: {
+    in: 'body',
+    isString: true,
+    trim: true,
+  },
+  is_html: {
+    in: 'body',
+    toBoolean: true,
+  },
+  title: {
+    in: 'body',
+    isString: true,
+    trim: true,
+  },
+  text: {
+    in: 'body',
+    isString: true,
+  },
+  category: {
+    in: 'body',
+    isString: true,
+    trim: true,
+  },
+  url: {
+    in: 'body',
+    isURL: true,
+  },
+  labels: {
+    in: 'body',
+    toArray: true,
+    customSanitizer: {
+      options: (value) => {
+        return Array.from(new Set(value));
+      },
+    },
+  },
+  'labels.*': {
+    in: 'body',
+    isString: true,
+    trim: true,
+    notEmpty: true,
+  },
+  attachments: {
+    in: 'body',
+    toArray: true,
+  },
+  'attachments.*.filename': {
+    in: 'body',
+    isString: true,
+    trim: true,
+  },
+  'attachments.*.encoding': {
+    in: 'body',
+    isIn: {
+      options: [["utf8", "utf16le", "latin1", "base64", "hex"]]
+    },
+  },
+  'attachments.*.content': {
+    in: 'body',
+    isString: true,
+  },
+  version: {
+    in: 'body',
+    isInt: true,
+    toInt: true,
+  },
+});
 
-var vaildateArray = function (obj, fn) {
-  for (const key in obj) {
-    const arr = obj[key];
-    for (let i = 0; i < arr.length; i++) {
-      if (!fn(arr[i])) {
-        throw new Error("Invaild " + key + "[" + i + "]: " + arr[i] + ".");
-      }
-    }
-  }
-}
-
-var constructAttachment = function (attachment) {
-  var filename = attachment.filename;
-  var encoding = attachment.encoding;
-  var content = attachment.content;
-  vaildate({ filename, encoding, content }, (v) => typeof v === 'string');
-  var extname = path.extname(filename);
-  return {
-    content_type: mime.lookup(extname) || 'application/octet-stream',
-    extension: extname,
-    filename: path.basename(filename),
-    content: Buffer.from(content, encoding),
-    encoding: encoding
-  }
-}
-
-var vaildateMetadata = function (metadata) {
-  vaildate({ metadata }, (v) => typeof v === 'object');
-  vaildate({
-    metadata_category: metadata.category,
-    metadata_original_url: metadata.original_url
-  }, (v) => typeof v === 'string' || typeof v === 'undefined');
-  if (typeof metadata.labels !== 'undefined') {
-    vaildate({ metadata_labels: metadata.labels }, (v) => v instanceof Array);
-    vaildateArray({
-      metadata_labels: metadata.labels
-    }, (v) => typeof v === 'string');
-  }
-}
-
-var constructDocument = function (id, obj) {
-  var html = obj.html ? true : false;
-  var time = new Date(obj.time).getTime();
-  var author_name = obj.author_name;
-  var author_id = obj.author_id;
-  var title = obj.title;
-  var text = obj.text;
-  var metadata = obj.metadata;
-  var attachments = obj.attachments;
-
-  vaildate({ time }, (v) => isFinite(v));
-  vaildate({
-    id,
-    author_name,
-    author_id,
-    title,
-    text,
-  }, (v) => typeof v === 'string');
-  vaildateMetadata(metadata);
-  vaildate({ attachments }, (v) => v instanceof Array);
-
-  for (let i = 0; i < attachments.length; i++) {
-    attachments[i] = constructAttachment(attachments[i]);
-  }
-
-  return {
-    id, html, time, author_name, author_id, title, text, metadata, attachments
-  };
-};
-
-
-var saveAttachments = function (bucket, doc, callback) {
-  var dirname = path.join(config.attachment.dirname, bucket, doc.id);
-
-  function saveAttachment(doc, i, callback) {
-    if (i < doc.attachments.length) {
-      var attachment = doc.attachments[i];
-      fs.writeFile(
-        path.join(dirname, attachment.filename),
-        attachment.content,
-        function (err) {
-          if (err) {
-            callback(err, i);
-          } else {
-            delete attachment.content;
-            saveAttachment(doc, ++i, callback);
-          }
-        });
-    } else {
-      callback(null, ++i);
-    }
-  };
-
-  fs.mkdir(dirname, { recursive: true }, (err) => {
-    if (err && err.code !== 'EEXIST') callback(err, 0);
-    saveAttachment(doc, 0, callback);
-  });
-
-}
-
-router.put('/document/:bucket/:id', function (req, res, next) {
-  var doc = constructDocument(req.params.id, req.body);
-  saveAttachments(req.params.bucket, doc, function (error, result) {
+router.delete('/document/:collection/:id', function (req, res, next) {
+  mongodb().collection(req.params.collection).deleteOne({
+    _id: req.params.id
+  }, function (error, result) {
     if (error) next(error);
-    mongodb().collection(req.params.bucket).insertOne(doc, function (error, result) {
+    if (result.deletedCount)
+      res.status(204).send();
+    else
+      res.status(404).send();
+  });
+});
+
+router.get('/document/:collection/:id/content', function (req, res, next) {
+  mongodb().collection(req.params.collection).findOne({
+    _id: req.params.id
+  }, {
+    projection: { content: 1 }
+  }, function (error, result) {
+    if (error) next(error);
+    if (result)
+      res.status(200).json(Content.fromDB(result.content).toView());
+    else
+      res.status(404).send();
+  });
+});
+
+router.post('/document/:collection/:_id/content', function (req, res, next) {
+  const doc = createDocument(req.params._id, req.body);
+  saveAttachments(req.params.collection, doc, function (error, result) {
+    if (error) next(error);
+    mongodb().collection(req.params.collection).updateOne({ _id: req.params._id }, doc, {
+      upsert: true
+    }, function (error, result) {
       if (error) next(error);
       res.status(204).send();
     });
+  });
+});
+
+router.put('/document/:collection/:_id/content', function (req, res, next) {
+  const doc = createDocument(req.params._id, req.body);
+  saveAttachments(req.params.collection, doc, function (error, result) {
+    if (error) next(error);
+    mongodb().collection(req.params.collection).insertOne(doc, {
+      upsert: true
+    }, function (error, result) {
+      if (error) next(error);
+      res.status(204).send();
+    });
+  });
+});
+
+router.get('/document/:collection/:id/archive_count', function (req, res, next) {
+  mongodb().collection(req.params.collection).findOne({
+    _id: req.params.id
+  }, {
+    projection: { archive_count: 1 }
+  }, function (error, result) {
+    if (error) next(error);
+    if (result)
+      res.status(200).json({ archive_count: result.archive_count });
+    else
+      res.status(404).send();
+  });
+});
+
+router.get('/document/:collection/:id/archives', function (req, res, next) {
+  mongodb().collection(req.params.collection).findOne({
+    _id: req.params.id
+  }, {
+    projection: { archives: 1 }
+  }, function (error, result) {
+    if (error) next(error);
+    if (result) {
+      const archives = [];
+      for (const archive of result.archives) {
+        archives.push(Content.fromDB(archive).toView());
+      }
+      res.status(200).json(archives);
+    }
+    else
+      res.status(404).send();
+  });
+});
+
+router.get('/document/:collection/:id/archive/:index', function (req, res, next) {
+  mongodb().collection(req.params.collection).findOne({
+    _id: req.params.id
+  }, {
+    projection: { archives: 1 }
+  }, function (error, result) {
+    if (error) next(error);
+    const i = parseInt(req.params.index);
+    if (result && result.archives && result.archives[i])
+      res.status(200).json(Content.fromDB(result.archives[i]).toView());
+    else
+      res.status(404).send();
   });
 });
 

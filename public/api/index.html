@@ -1,0 +1,22 @@
+<html>
+
+<head>
+    <link rel="stylesheet" href ="https://petstore.swagger.io/swagger-ui.css">
+    <script src="https://unpkg.com/swagger-ui-dist@3/swagger-ui-bundle.js"></script>
+</head>
+
+<body>
+    <div id="swagger-ui"></div>
+    <script>
+        var ui = SwaggerUIBundle({
+            url: "api.yml",
+            dom_id: '#swagger-ui',
+            presets: [
+                SwaggerUIBundle.presets.apis,
+                SwaggerUIBundle.SwaggerUIStandalonePreset
+            ]
+        })
+    </script>
+</body>
+
+</html>
