@@ -11,56 +11,57 @@ tags:
     description: "A single content item such as a web page, an article, an email or a tweet etc."
   - name: archive
     description: "History version of the content."
+  - name: attachment
+    description: "Attachment of the document."
   - name: metadata
+parameters:
+  collection:
+    name: "collection"
+    in: "path"
+    description: "Collection name"
+    required: true
+    type: "string"
+  id:
+    name: "id"
+    in: "path"
+    description: "Document id"
+    required: true
+    type: "string"
+produces:
+- "application/json"
+consumer:
+- "application/json"
 paths:
   /document/{collection}/{id}:
+    parameters:
+      - $ref: "#/parameters/collection"
+      - $ref: "#/parameters/id"
     delete:
       tags:
         - document
       summary: "Delete content"
       description: "Delete content"
       operationId: "deleteContent"
-      parameters:
-      - name: "collection"
-        in: "path"
-        description: "Collection name"
-        required: true
-        type: "string"
-      - name: "id"
-        in: "path"
-        description: "Document id"
-        required: true
-        type: "string"
       responses:
         204:
-          description: "Success"
+          description: "OK"
         404:
           description: "Not Found"
         500:
           description: "Error"
   /document/{collection}/{id}/content:
+    parameters:
+      - $ref: "#/parameters/collection"
+      - $ref: "#/parameters/id"
     get:
       tags: 
         - content
       summary: "Get content"
       description: "Get content"
       operationId: "getContent"
-      produces:
-      - "application/json"
-      parameters:
-      - name: "collection"
-        in: "path"
-        description: "Collection name"
-        required: true
-        type: "string"
-      - name: "id"
-        in: "path"
-        description: "Document id"
-        required: true
-        type: "string"
       responses:
         200:
-          description: "Success"
+          description: "OK"
           schema:
             $ref: "#/definitions/Content"
         404:
@@ -73,19 +74,7 @@ paths:
       summary: "Update and archive content"
       description: "Update content and archive the original version into `archives`."
       operationId: "postContent"
-      consumer:
-      - "application/json"
       parameters:
-      - name: "collection"
-        in: "path"
-        description: "Collection name"
-        required: true
-        type: "string"
-      - name: "id"
-        in: "path"
-        description: "Document id"
-        required: true
-        type: "string"
       - name: "body"
         in: "body"
         description: "Content object"
@@ -93,8 +82,8 @@ paths:
         schema:
           $ref: "#/definitions/Content"
       responses:
-        204:
-          description: "Success"
+        201:
+          description: "Created"
         404:
           description: "Not Found"
         500:
@@ -107,58 +96,36 @@ paths:
       summary: "Insert/update content"
       description: "Insert/update (no archive) content"
       operationId: "putContent"
-      consumer:
-      - "application/json"
       parameters:
-      - name: "collection"
-        in: "path"
-        description: "Collection name"
-        required: true
-        type: "string"
-      - name: "id"
-        in: "path"
-        description: "Document id"
-        required: true
-        type: "string"
       - name: "body"
         in: "body"
         description: "Content object"
         schema:
           $ref: "#/definitions/Content"
       responses:
+        201:
+          description: "Created"
         204:
-          description: "Success"
-        404:
-          description: "Not Found"
+          description: "Update successful"
         409:
           description: "Conflict"
           schema:
             $ref: "#/definitions/Content"
         500:
           description: "Error"
-  /document/{collection}/{id}/archive_count:
+  /document/{collection}/{id}/archive-count:
+    parameters:
+      - $ref: "#/parameters/collection"
+      - $ref: "#/parameters/id"
     get:
       tags: 
         - archive
       summary: "Get archive count"
       description: "Get archive count"
       operationId: "getArchiveCount"
-      produces:
-      - "application/json"
-      parameters:
-      - name: "collection"
-        in: "path"
-        description: "Collection name"
-        required: true
-        type: "string"
-      - name: "id"
-        in: "path"
-        description: "Document id"
-        required: true
-        type: "string"
       responses:
         200:
-          description: "Success"
+          description: "OK"
           schema:
             type: "object"
             properties:
@@ -169,28 +136,18 @@ paths:
         500:
           description: "Error"
   /document/{collection}/{id}/archives:
+    parameters:
+      - $ref: "#/parameters/collection"
+      - $ref: "#/parameters/id"
     get:
       tags: 
         - archive
       summary: "Get archive array"
       description: "Get archive array"
       operationId: "getArchives"
-      produces:
-      - "application/json"
-      parameters:
-      - name: "collection"
-        in: "path"
-        description: "Collection name"
-        required: true
-        type: "string"
-      - name: "id"
-        in: "path"
-        description: "Document id"
-        required: true
-        type: "string"
       responses:
         200:
-          description: "Success"
+          description: "OK"
           schema:
             type: "array"
             items:
@@ -200,25 +157,16 @@ paths:
         500:
           description: "Error"
   /document/{collection}/{id}/archive/{index}:
+    parameters:
+      - $ref: "#/parameters/collection"
+      - $ref: "#/parameters/id"
     get:
       tags: 
         - archive
       summary: "Get specific archive"
       description: "Get specific archive version"
       operationId: "getArchive"
-      produces:
-      - "application/json"
       parameters:
-      - name: "collection"
-        in: "path"
-        description: "Collection name"
-        required: true
-        type: "string"
-      - name: "id"
-        in: "path"
-        description: "Document id"
-        required: true
-        type: "string"
       - name: "index"
         in: "path"
         description: "Index in archive array"
@@ -226,11 +174,131 @@ paths:
         type: "integer"
       responses:
         200:
-          description: "Success"
+          description: "OK"
           schema:
             $ref: "#/definitions/Content"
         404:
           description: "Not Found"
+        500:
+          description: "Error"
+  /upload-url/{collection}/{id}:
+    get:
+      tags:
+        - attachment
+      summary: "Get the upload url of the attachment"
+      description: "Get the upload url of the attachment"
+      operationId: "getUploadUrl"
+      parameters:
+        - $ref: "#/parameters/collection"
+        - $ref: "#/parameters/id"
+        - name: "filename"
+          in: "query"
+          description: "File's name"
+          required: true
+          type: "string"
+        - name: "formData"
+          in: "query"
+          description: "Whether use multipart/form-data to upload file or not"
+          type: "boolean"
+          default: false
+      responses:
+        200:
+          description: "OK"
+          schema:
+            type: "object"
+            properties:
+              method:
+                type: "string"
+                enum:
+                  - POST
+                  - PUT
+              url:
+                type: "string"
+              headers:
+                type: "array"
+                items:
+                  type: "object"
+                  properties:
+                    name:
+                      type: "string"
+                    value:
+                      type: "string"
+              formData:
+                type: "array"
+                items:
+                  type: "object"
+                  properties:
+                    name:
+                      type: "string"
+                    value:
+                      type: "string"
+              formField:
+                type: "string"
+              cid:
+                type: "string"
+        400:
+          description: "Invalid params"
+        500:
+          description: "Error"
+  /document/{collection}/{id}/attachment/{cid}:
+    parameters:
+      - $ref: "#/parameters/collection"
+      - $ref: "#/parameters/id"
+      - name: "cid"
+        in: "path"
+        description: "Content ID"
+        required: true
+        type: "string"
+    get:
+      tags:
+        - attachment
+      summary: "Get attachment"
+      description: "Get attachment"
+      operationId: "getAttachment"
+      responses:
+        200:
+          description: "OK"
+          schema:
+            type: "string"
+            format: "binary"
+        302:
+          description: "Found"
+        500:
+          description: "Error"
+    post:
+      tags:
+        - attachment
+      summary: "Upload attachment through formData"
+      description: "Upload attachment through formData (multipart/form-data)"
+      operationId: "postAttachment"
+      consumer:
+        - multipart/form-data
+      parameters:
+        - name: "file"
+          in: "formData"
+          description: "Attachment file"
+          required: true
+          type: "file"
+      responses:
+        201:
+          description: "Created"
+        409:
+          description: "File exist"
+        500:
+          description: "Error"
+    put:
+      tags:
+        - attachment
+      summary: "Upload attachment directly"
+      description: "Upload attachment by FileReader or non-browser."
+      operationId: "putAttachment"
+      consumer:
+        - application/octet-stream
+      responses:
+        201:
+          description: "Created"
+        409:
+          description: "File exist"
         500:
           description: "Error"
 definitions:
@@ -253,7 +321,7 @@ definitions:
         format: "int64"
       category:
         type: "string"
-      url:
+      original_url:
         type: "string"
       labels:
         type: "array"
@@ -266,29 +334,16 @@ definitions:
           properties:
             url:
               type: "string"
-              description: "Only in `GET` method."
-            filename:
+              readOnly: true
+            original_url:
               type: "string"
-            extname:
+            cid:
               type: "string"
             content_type:
               type: "string"
-            encoding:
-              type: "string"
-              description: "File encoding type. Only in `POST`/`PUT` method."
-              enum:
-                - "utf8"
-                - "utf16le"
-                - "latin1"
-                - "base64"
-                - "hex"
-            content:
-              description: "File content. Only in `POST`/`PUT` method."
-              type: "string"
+              readOnly: true
           required:
-            - filename
-            - encoding
-            - content
+            - cid
       version:
         description: "Optimistic locking. Required for `PUT`, don't required for `POST`."
         type: "integer"
