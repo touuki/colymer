@@ -1,94 +1,16 @@
 const express = require('express');
-const { checkSchema } = require('express-validator');
+const { param, validationResult } = require('express-validator');
 const router = express.Router();
 
-const config = require('../config');
+const contentValidator = require('../validator').content;
+const Content = require('../model').Content;
 const mongodb = require('../utils/mongo');
-
-const contentValidation = checkSchema({
-  index: {
-    in: 'params',
-    isInt: true,
-    toInt: true,
-  },
-  author_id: {
-    in: 'body',
-    isString: true,
-    trim: true,
-  },
-  author_name: {
-    in: 'body',
-    isString: true,
-    trim: true,
-  },
-  is_html: {
-    in: 'body',
-    toBoolean: true,
-  },
-  title: {
-    in: 'body',
-    isString: true,
-    trim: true,
-  },
-  text: {
-    in: 'body',
-    isString: true,
-  },
-  category: {
-    in: 'body',
-    isString: true,
-    trim: true,
-  },
-  url: {
-    in: 'body',
-    isURL: true,
-  },
-  labels: {
-    in: 'body',
-    toArray: true,
-    customSanitizer: {
-      options: (value) => {
-        return Array.from(new Set(value));
-      },
-    },
-  },
-  'labels.*': {
-    in: 'body',
-    isString: true,
-    trim: true,
-    notEmpty: true,
-  },
-  attachments: {
-    in: 'body',
-    toArray: true,
-  },
-  'attachments.*.filename': {
-    in: 'body',
-    isString: true,
-    trim: true,
-  },
-  'attachments.*.encoding': {
-    in: 'body',
-    isIn: {
-      options: [["utf8", "utf16le", "latin1", "base64", "hex"]]
-    },
-  },
-  'attachments.*.content': {
-    in: 'body',
-    isString: true,
-  },
-  version: {
-    in: 'body',
-    isInt: true,
-    toInt: true,
-  },
-});
 
 router.delete('/document/:collection/:id', function (req, res, next) {
   mongodb().collection(req.params.collection).deleteOne({
     _id: req.params.id
   }, function (error, result) {
-    if (error) next(error);
+    if (error) return next(error);
     if (result.deletedCount)
       res.status(204).send();
     else
@@ -102,47 +24,99 @@ router.get('/document/:collection/:id/content', function (req, res, next) {
   }, {
     projection: { content: 1 }
   }, function (error, result) {
-    if (error) next(error);
+    if (error) return next(error);
     if (result)
-      res.status(200).json(Content.fromDB(result.content).toView());
+      res.status(200).json(new Content(result.content).toView());
     else
       res.status(404).send();
   });
 });
 
-router.post('/document/:collection/:_id/content', function (req, res, next) {
-  const doc = createDocument(req.params._id, req.body);
-  saveAttachments(req.params.collection, doc, function (error, result) {
-    if (error) next(error);
-    mongodb().collection(req.params.collection).updateOne({ _id: req.params._id }, doc, {
-      upsert: true
+router.post('/document/:collection/:id/content', contentValidator, function (req, res, next) {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+  new Content(req.body).checkAttachments(function (err, content) {
+    if (err) {
+      return res.status(400).json({ errors: err });
+    }
+    const obj = content.toDB();
+    obj.version++;
+    // TODO
+    mongodb().collection(req.params.collection).updateOne({
+      _id: req.params.id,
+      'content.version': content.version
+    }, {
+      $set: { content: obj },
+    }, {
+      ignoreUndefined: true,
     }, function (error, result) {
-      if (error) next(error);
-      res.status(204).send();
+      if (error) return next(error);
+      if (result.matchedCount) {
+        res.status(204).send();
+      } else {
+        res.status(409).send();
+      }
     });
   });
 });
 
-router.put('/document/:collection/:_id/content', function (req, res, next) {
-  const doc = createDocument(req.params._id, req.body);
-  saveAttachments(req.params.collection, doc, function (error, result) {
-    if (error) next(error);
-    mongodb().collection(req.params.collection).insertOne(doc, {
-      upsert: true
-    }, function (error, result) {
-      if (error) next(error);
-      res.status(204).send();
-    });
+router.put('/document/:collection/:id/content', contentValidator, function (req, res, next) {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+  new Content(req.body).checkAttachments(function (err, content) {
+    if (err) {
+      return res.status(400).json({ errors: err });
+    }
+    const version = content.version;
+    const obj = content.toDB();
+    if (version) {
+      // update
+      obj.version = version + 1;
+      mongodb().collection(req.params.collection).updateOne({
+        _id: req.params.id,
+        'content.version': version
+      }, {
+        $set: { content: obj },
+      }, {
+        ignoreUndefined: true,
+      }, function (error, result) {
+        if (error) return next(error);
+        if (result.matchedCount) {
+          res.status(204).send();
+        } else {
+          res.status(409).send();
+        }
+      });
+    } else {
+      // insert
+      obj.version = 1;
+      mongodb().collection(req.params.collection).insertOne({
+        _id: req.params.id,
+        content: obj,
+        metadata: {},
+        archives: [],
+        archive_count: 0,
+      }, {
+        ignoreUndefined: true,
+      }, function (error, result) {
+        if (error) return next(error);
+        res.status(204).send();
+      });
+    }
   });
 });
 
-router.get('/document/:collection/:id/archive_count', function (req, res, next) {
+router.get('/document/:collection/:id/archive-count', function (req, res, next) {
   mongodb().collection(req.params.collection).findOne({
     _id: req.params.id
   }, {
     projection: { archive_count: 1 }
   }, function (error, result) {
-    if (error) next(error);
+    if (error) return next(error);
     if (result)
       res.status(200).json({ archive_count: result.archive_count });
     else
@@ -156,11 +130,11 @@ router.get('/document/:collection/:id/archives', function (req, res, next) {
   }, {
     projection: { archives: 1 }
   }, function (error, result) {
-    if (error) next(error);
+    if (error) return next(error);
     if (result) {
       const archives = [];
       for (const archive of result.archives) {
-        archives.push(Content.fromDB(archive).toView());
+        archives.push(new Content(archive).toView());
       }
       res.status(200).json(archives);
     }
@@ -169,16 +143,19 @@ router.get('/document/:collection/:id/archives', function (req, res, next) {
   });
 });
 
-router.get('/document/:collection/:id/archive/:index', function (req, res, next) {
+router.get('/document/:collection/:id/archive/:index', param('index').isInt().toInt(), function (req, res, next) {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
   mongodb().collection(req.params.collection).findOne({
     _id: req.params.id
   }, {
     projection: { archives: 1 }
   }, function (error, result) {
-    if (error) next(error);
-    const i = parseInt(req.params.index);
-    if (result && result.archives && result.archives[i])
-      res.status(200).json(Content.fromDB(result.archives[i]).toView());
+    if (error) return next(error);
+    if (result && result.archives && result.archives[req.params.index])
+      res.status(200).json(new Content(result.archives[req.params.index]).toView());
     else
       res.status(404).send();
   });

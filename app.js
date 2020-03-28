@@ -22,9 +22,11 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/', require('./routes/index'));
 app.use('/api', [
   function (req, res, next) {
-    res.header("Access-Control-Allow-Origin", "*");
-    res.header("Access-Control-Allow-Methods", "PUT,POST,GET,DELETE,OPTIONS,HEAD");
-    res.header("Access-Control-Allow-Headers", "Content-Type");
+    if(req.get('Origin')){
+      res.header('Access-Control-Allow-Origin', req.get('Origin'));
+      res.header('Access-Control-Allow-Methods', 'PUT,POST,GET,DELETE,OPTIONS,HEAD');
+      res.header('Access-Control-Allow-Headers', 'Content-Type');
+    }
     next();
   },
   require('./routes/api')

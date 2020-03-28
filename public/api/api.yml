@@ -1,7 +1,7 @@
 swagger: "2.0"
 info:
   description: "Lightweight Content Polymerizing Engine & Management System"
-  title: Colymer API
+  title: "Colymer API"
   version: "1.0"
 basePath: /api
 tags:
@@ -29,7 +29,7 @@ parameters:
     type: "string"
 produces:
 - "application/json"
-consumer:
+consumes:
 - "application/json"
 paths:
   /document/{collection}/{id}:
@@ -39,9 +39,9 @@ paths:
     delete:
       tags:
         - document
-      summary: "Delete content"
-      description: "Delete content"
-      operationId: "deleteContent"
+      summary: "Delete document"
+      description: "Delete document"
+      operationId: "deleteDocument"
       responses:
         204:
           description: "OK"
@@ -271,7 +271,7 @@ paths:
       summary: "Upload attachment through formData"
       description: "Upload attachment through formData (multipart/form-data)"
       operationId: "postAttachment"
-      consumer:
+      consumes:
         - multipart/form-data
       parameters:
         - name: "file"
@@ -292,7 +292,7 @@ paths:
       summary: "Upload attachment directly"
       description: "Upload attachment by FileReader or non-browser."
       operationId: "putAttachment"
-      consumer:
+      consumes:
         - application/octet-stream
       responses:
         201:
@@ -317,8 +317,8 @@ definitions:
       text:
         type: "string"
       time:
-        type: "integer"
-        format: "int64"
+        type: "string"
+        format: "date-time"
       category:
         type: "string"
       original_url:
@@ -341,23 +341,15 @@ definitions:
               type: "string"
             content_type:
               type: "string"
-              readOnly: true
           required:
             - cid
       version:
-        description: "Optimistic locking. Required for `PUT`, don't required for `POST`."
+        description: "Optimistic locking. Required for update."
         type: "integer"
     required:
-      - author_id
-      - author_name
-      - is_html
       - title
       - text
       - time
-      - category
-      - url
-      - labels
-      - attachments
   Document:
     type: "object"
     properties:
