@@ -7,7 +7,7 @@ class Content {
     this.is_html = obj.is_html ? true : false;
     this.title = typeof obj.title === 'string' ? obj.title : '';
     this.text = typeof obj.text === 'string' ? obj.text : '';
-    this.time = Number.isInteger(obj.time) ? obj.time : 0;
+    this.time = obj.time instanceof Date ? obj.time : null;
     this.category = typeof obj.category === 'string' ? obj.category : '';
     this.original_url = typeof obj.original_url === 'string' ? obj.original_url : '';
     this.labels = obj.labels instanceof Array ? ((arr) => {
@@ -44,7 +44,7 @@ class Content {
       is_html: this.is_html,
       title: this.title,
       text: this.text, // TODO cid convert
-      time: new Date(this.time).toISOString(),
+      time: this.time ? this.time.toISOString() : null,
       category: this.category,
       original_url: this.original_url,
       labels: [],

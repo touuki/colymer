@@ -32,8 +32,13 @@ module.exports = checkSchema({
     isISO8601: true,
     customSanitizer: {
       options: (value) => {
-        return new Date(value).getTime();
+        return value ? new Date(value) : value;
       },
+    },
+    optional: {
+      options: {
+        nullable: true,
+      }
     },
   },
   category: {
