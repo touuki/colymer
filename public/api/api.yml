@@ -71,8 +71,8 @@ paths:
     post:
       tags: 
         - content
-      summary: "Update and archive content"
-      description: "Update content and archive the original version into `archives`."
+      summary: "Insert/Update (archive) content"
+      description: "Insert/Update content. It will archive the original content into `archives` if the content already exists."
       operationId: "postContent"
       parameters:
       - name: "body"
@@ -84,17 +84,19 @@ paths:
       responses:
         201:
           description: "Created"
-        404:
-          description: "Not Found"
+        204:
+          description: "Updated"
+        400:
+          description: "Invalid Input"
         500:
           description: "Error"
         503:
-          description: "Service Temporarily Unavailable"
+          description: "Try again"
     put:
       tags: 
         - content
-      summary: "Insert/update content"
-      description: "Insert/update (no archive) content"
+      summary: "Insert/Update (no archive) content"
+      description: "Insert/Update content. It will not archive the original content if the content already exists."
       operationId: "putContent"
       parameters:
       - name: "body"
@@ -106,11 +108,11 @@ paths:
         201:
           description: "Created"
         204:
-          description: "Update successful"
+          description: "Updated"
+        400:
+          description: "Invalid Input"
         409:
           description: "Conflict"
-          schema:
-            $ref: "#/definitions/Content"
         500:
           description: "Error"
   /document/{collection}/{id}/archive-count:
@@ -177,6 +179,8 @@ paths:
           description: "OK"
           schema:
             $ref: "#/definitions/Content"
+        400:
+          description: "Invalid Input"
         404:
           description: "Not Found"
         500:
@@ -237,7 +241,7 @@ paths:
               cid:
                 type: "string"
         400:
-          description: "Invalid params"
+          description: "Invalid Input"
         500:
           description: "Error"
   /document/{collection}/{id}/attachment/{cid}:
@@ -344,7 +348,7 @@ definitions:
           required:
             - cid
       version:
-        description: "Optimistic locking. Required for update."
+        description: "Optimistic locking. Required for `PUT` update."
         type: "integer"
     required:
       - title

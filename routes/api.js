@@ -42,21 +42,50 @@ router.post('/document/:collection/:id/content', contentValidator, function (req
       return res.status(400).json({ errors: err });
     }
     const obj = content.toDB();
-    obj.version++;
-    // TODO
-    mongodb().collection(req.params.collection).updateOne({
+    mongodb().collection(req.params.collection).findOne({
       _id: req.params.id,
-      'content.version': content.version
     }, {
-      $set: { content: obj },
-    }, {
-      ignoreUndefined: true,
+      projection: { content: 1 }
     }, function (error, result) {
       if (error) return next(error);
-      if (result.matchedCount) {
-        res.status(204).send();
-      } else {
-        res.status(409).send();
+      if (result) {
+        // Update
+        const original_content = new Content(result.content);
+        const version = original_content.version;
+        obj.version = version + 1;
+        mongodb().collection(req.params.collection).updateOne({
+          _id: req.params.id,
+          'content.version': version
+        }, {
+          $set: { content: obj },
+          $inc: { archive_count: 1 },
+          $push: { archives: original_content.toDB() },
+        }, {
+          ignoreUndefined: true,
+        }, function (error, result) {
+          if (error) return next(error);
+          if (result.matchedCount) {
+            res.status(204).send();
+          } else {
+            res.status(503).send();
+          }
+        });
+      }
+      else {
+        // Insert
+        obj.version = 1;
+        mongodb().collection(req.params.collection).insertOne({
+          _id: req.params.id,
+          content: obj,
+          metadata: {},
+          archives: [],
+          archive_count: 0,
+        }, {
+          ignoreUndefined: true,
+        }, function (error, result) {
+          if (error) return next(error);
+          res.status(201).send();
+        });
       }
     });
   });
@@ -74,7 +103,7 @@ router.put('/document/:collection/:id/content', contentValidator, function (req,
     const version = content.version;
     const obj = content.toDB();
     if (version) {
-      // update
+      // Update
       obj.version = version + 1;
       mongodb().collection(req.params.collection).updateOne({
         _id: req.params.id,
@@ -92,7 +121,7 @@ router.put('/document/:collection/:id/content', contentValidator, function (req,
         }
       });
     } else {
-      // insert
+      // Insert
       obj.version = 1;
       mongodb().collection(req.params.collection).insertOne({
         _id: req.params.id,
@@ -104,7 +133,7 @@ router.put('/document/:collection/:id/content', contentValidator, function (req,
         ignoreUndefined: true,
       }, function (error, result) {
         if (error) return next(error);
-        res.status(204).send();
+        res.status(201).send();
       });
     }
   });
