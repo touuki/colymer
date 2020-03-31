@@ -71,7 +71,10 @@ module.exports = checkSchema({
   'attachments.*.cid': {
     in: 'body',
     isString: true,
-    trim: true,
+    matches: {
+      negated: true,
+      options: /[\\/:*?"<>|\s]/,
+    },
     notEmpty: true,
   },
   'attachments.*.original_url': {

@@ -6,8 +6,5 @@
             "poolSize": 5,
             "useUnifiedTopology": true
         }
-    },
-    "attachment":{
-        "dirname":"../public/attachment"
     }
 }

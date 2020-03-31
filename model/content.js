@@ -1,7 +1,11 @@
 const mime = require('mime-types');
+const AttachmentStorage = require('../utils/attachment-storage');
 
 class Content {
-  constructor(obj) {
+  constructor(obj, collection, id) {
+    obj = obj || {};
+    this.collection = collection;
+    this.id = id;
     this.author_id = typeof obj.author_id === 'string' ? obj.author_id : '';
     this.author_name = typeof obj.author_name === 'string' ? obj.author_name : '';
     this.is_html = obj.is_html ? true : false;
@@ -10,17 +14,19 @@ class Content {
     this.time = obj.time instanceof Date ? obj.time : null;
     this.category = typeof obj.category === 'string' ? obj.category : '';
     this.original_url = typeof obj.original_url === 'string' ? obj.original_url : '';
-    this.labels = obj.labels instanceof Array ? ((arr) => {
+    this.labels = Array.isArray(obj.labels) ? ((arr) => {
       let obj = {};
       return arr.filter((item) =>
         typeof item === 'string' && item !== '' && !obj.hasOwnProperty(item) ?
           (obj[item] = true) : false);
     })(obj.labels) : [];
-    this.attachments = obj.attachments instanceof Array ? ((arr) => {
+    this.attachments = Array.isArray(obj.attachments) ? ((arr) => {
       let obj = {};
       return arr.filter((item) => {
         if (typeof item.cid === 'string' && item.cid !== '' && !obj.hasOwnProperty(item.cid)) {
           obj[item.cid] = true
+          item.collection = collection;
+          item.id = id;
           item.original_url = typeof item.original_url === 'string' ? item.original_url : '';
           item.content_type = typeof item.content_type === 'string' ? item.content_type
             : mime.lookup(item.cid) || '';
@@ -30,11 +36,6 @@ class Content {
       });
     })(obj.attachments) : [];
     this.version = Number.isInteger(obj.version) ? obj.version : 0;
-  }
-
-  checkAttachments(callback) {
-    // TODO
-    callback(null, this);
   }
 
   toView() {
@@ -59,7 +60,7 @@ class Content {
         cid: element.cid,
         original_url: element.original_url,
         content_type: element.content_type,
-        url: element.cid, // TODO
+        url: AttachmentStorage.getUrl(element),
       };
       obj.attachments.push(attachment);
     }

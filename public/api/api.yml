@@ -185,22 +185,23 @@ paths:
           description: "Not Found"
         500:
           description: "Error"
-  /upload-url/{collection}/{id}:
+  /document/{collection}/{id}/attachment-upload-method:
+    parameters:
+      - $ref: "#/parameters/collection"
+      - $ref: "#/parameters/id"
     get:
       tags:
         - attachment
-      summary: "Get the upload url of the attachment"
-      description: "Get the upload url of the attachment"
+      summary: "Get the upload method of the attachment"
+      description: "Get the upload method of the attachment"
       operationId: "getUploadUrl"
       parameters:
-        - $ref: "#/parameters/collection"
-        - $ref: "#/parameters/id"
         - name: "filename"
           in: "query"
           description: "File's name"
           required: true
           type: "string"
-        - name: "formData"
+        - name: "isFormData"
           in: "query"
           description: "Whether use multipart/form-data to upload file or not"
           type: "boolean"
