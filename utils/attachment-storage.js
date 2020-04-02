@@ -1,63 +1,16 @@
 const path = require('path');
 const fs = require('fs');
 const mime = require('mime-types');
+const storageConfig = require('../config').attachment_default_storage;
 
-class AttachmentStorage {
-  /**
-   * @param {typeof AttachmentStorage} storage
-   */
-  static set storage(storage) {
-    this._storage = storage;
-  }
-
-  static get storage() {
-    return this._storage || this;
-  }
-
-  static checkExistence(attachments, callback) {
-    const errors = [];
-    let i = 0;
-    const _callback = function (error) {
-      if (error) {
-        errors.push(error);
-      }
-      if (i < attachments.length) {
-        this.storage._checkExistence(attachments[i++], _callback);
-      } else {
-        callback(errors);
-      }
-    }
-    this.storage._checkExistence(attachments[i++], _callback);
-  }
-
-  static getUploadMethod(collection, id, filename, isFormData) {
-    filename = path.win32.basename(filename);
-    filename = filename.replace(/[\\/:*?"<>|]/g, '');
-    filename = filename.replace(/\s/g, '+');
-    let firstpart = filename;
-    let extname = path.extname(filename);
-    if (extname) {
-      do {
-        firstpart = firstpart.slice(0, -extname.length);
-        extname = path.extname(firstpart);
-      } while (extname && mime.types[extname.slice(1).toLowerCase()]);
-    }
-    let lastpart = filename.slice(firstpart.length);
-    let randomPart = '.' + new Date().getTime().toString('36');
-    const cid = firstpart + randomPart + lastpart;
-    return this.storage._getUploadMethod({ collection, id, cid }, isFormData);
-  }
+class DefaultStorage {
 
   static getUrl(attachment) {
-    return this.storage._getUrl(attachment);
-  }
-
-  static _getUrl(attachment) {
-    return path.posix.join('/attachment', attachment.collection, attachment.id,
+    return path.posix.join(storageConfig.url_prefix, attachment.collection, attachment.id,
       attachment.cid);
   }
 
-  static _getUploadMethod(attachment, isFormData) {
+  static getUploadMethod(attachment, isFormData) {
     if (isFormData) {
       return {
         method: 'POST',
@@ -84,19 +37,83 @@ class AttachmentStorage {
     }
   }
 
-  static _checkExistence(attachment, callback) {
-    fs.access(path.join(__dirname, '..', 'public', 'attachment', attachment.collection,
-      attachment.id, attachment.cid), function (err) {
-        if (err) {
-          callback({
-            cid: attachment.cid,
-            message: `Attachment ${attachment.cid} does not exist.`
-          });
-        } else {
-          callback(null);
-        }
-      });
+  static checkExistence(attachments, callback) {
+    const errors = [];
+    let i = 0;
+    const _callback = function (error, exist, attachment) {
+      if (error) return callback(error);
+      if (!exist) {
+        return callback({
+          cid: attachment.cid,
+          message: `Attachment ${attachment.cid} does not exist.`
+        });
+      }
+      if (i < attachments.length) {
+        this.exists(attachments[i++], _callback);
+      }
+    }
+    this.exists(attachments[i++], _callback);
   }
-}
 
-module.exports = AttachmentStorage;
+  static exists(attachment, callback) {
+    fs.access(this.getPath(attachment), function (err) {
+      if (err) {
+        callback(null, false, attachment);
+      } else {
+        callback(null, true, attachment);
+      }
+    });
+  }
+
+  static moveFile(attachment, originalPath, callback) {
+    const newPath = this.getPath(attachment)
+    fs.mkdir(path.dirname(newPath), { recursive: true }, function (err) {
+      if (err) {
+        fs.unlink(originalPath, (error) => error && console.error(error));
+        return callback(err);
+      }
+      fs.link(originalPath, newPath, function (err) {
+        fs.unlink(originalPath, (error) => error && console.error(error));
+        // originalPath and newPath should be on the same device, otherwise a 'EXDEV' error will raise.
+        callback(err);
+      });
+    });
+  }
+
+  static writeFile(attachment, buffer, callback) {
+    const newPath = this.getPath(attachment)
+    fs.mkdir(path.dirname(newPath), { recursive: true }, function (err) {
+      if (err) {
+        return callback(err);
+      }
+      fs.writeFile(newPath, buffer, {
+        flag: 'wx'
+      }, callback);
+    });
+  }
+
+  static getPath(attachment) {
+    return path.join(storageConfig.storage_dir, attachment.collection,
+      attachment.id, attachment.cid)
+  }
+};
+
+class StorageProxy {
+
+  static checkExistence(attachments, callback) {
+    return this.storage.checkExistence(attachments, callback);
+  }
+
+  static getUploadMethod(attachment, isFormData) {
+    return this.storage.getUploadMethod(attachment, isFormData);
+  }
+
+  static getUrl(attachment) {
+    return this.storage.getUrl(attachment);
+  }
+
+}
+StorageProxy.storage = DefaultStorage;
+
+module.exports.StorageProxy = StorageProxy;
+module.exports.DefaultStorage = DefaultStorage;

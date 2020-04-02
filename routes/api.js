@@ -1,10 +1,12 @@
 const express = require('express');
-const { param, query, validationResult } = require('express-validator');
 const router = express.Router();
+
+const { param, query, header } = require('express-validator');
+const path = require('path');
 
 const validator = require('../validator');
 const Content = require('../model').Content;
-const AttachmentStorage = require('../utils/attachment-storage');
+const { StorageProxy, DefaultStorage } = require('../utils/attachment-storage');
 const mongodb = require('../utils/mongo');
 
 router.use(function (req, res, next) {
@@ -49,7 +51,7 @@ router.get('/document/:collection/:id/content',
 router.post('/document/:collection/:id/content',
   validator.content, validator.checkResult, function (req, res, next) {
     const content = new Content(req.body, req.params.collection, req.params.id);
-    AttachmentStorage.checkExistence(content.attachments, function (err) {
+    StorageProxy.checkExistence(content.attachments, function (err) {
       if (err) {
         return res.status(400).json({ errors: err });
       }
@@ -106,7 +108,7 @@ router.post('/document/:collection/:id/content',
 router.put('/document/:collection/:id/content',
   validator.content, validator.checkResult, function (req, res, next) {
     const content = new Content(req.body, req.params.collection, req.params.id);
-    AttachmentStorage.checkExistence(content.attachments, function (err) {
+    StorageProxy.checkExistence(content.attachments, function (err) {
       if (err) {
         return res.status(400).json({ errors: err });
       }
@@ -201,23 +203,106 @@ router.get('/document/:collection/:id/archive/:index',
 
 router.get('/document/:collection/:id/attachment-upload-method', query('filename').trim(),
   query('isFormData').toBoolean(), validator.checkResult, function (req, res, next) {
-    res.status(200).json(AttachmentStorage.getUploadMethod(req.params.collection,
-      req.params.id, req.query.filename, req.query.isFormData));
+    let filename = path.win32.basename(req.query.filename).replace(/[\\/:*?"<>|]/g, '').replace(/\s/g, '+');
+    let firstpart = filename;
+    let extname = path.extname(filename);
+    if (extname) {
+      do {
+        firstpart = firstpart.slice(0, -extname.length);
+        extname = path.extname(firstpart);
+      } while (extname && mime.types[extname.slice(1).toLowerCase()]);
+    }
+    let lastpart = filename.slice(firstpart.length);
+    let randomPart = '.' + Date.now().toString('36');
+    const cid = firstpart + randomPart + lastpart;
+    res.status(200).json(StorageProxy.getUploadMethod({
+      collection: req.params.collection,
+      id: req.params.id,
+      cid: cid
+    }, req.query.isFormData));
   });
 
 router.get('/document/:collection/:id/attachment/:cid',
   validator.cid, validator.checkResult, function (req, res, next) {
-    res.redirect(AttachmentStorage.getUrl(req.params));
+    res.redirect(StorageProxy.getUrl(req.params));
   });
 
-router.post('/document/:collection/:id/attachment/:cid',
-  validator.cid, validator.checkResult, function (req, res, next) {
+if (StorageProxy.storage === DefaultStorage) {
+  const bytes = require('bytes');
+  const fs = require('fs');
+  const storageConfig = require('../config').attachment_default_storage;
+  const maxFileSize = bytes.parse(storageConfig.max_file_size);
+  const multer = require('multer');
+  const upload = multer({
+    dest: storageConfig.uploads_tmpdir,
+    limits: {
+      files: 1,
+      fields: 0
+    }
+  }).single('file');
 
-  });
+  const checkAvailable = function (req, res, next) {
+    DefaultStorage.exists(req.params, function (error, exist) {
+      if (error) return next(error);
+      if (exist)
+        return res.status(409).send();
+      else {
+        next();
+      }
+    });
+  };
 
-router.put('/document/:collection/:id/attachment/:cid',
-  validator.cid, validator.checkResult, function (req, res, next) {
+  router.post('/document/:collection/:id/attachment/:cid', validator.cid,
+    header('content-length').toInt().custom((value) => value < maxFileSize),
+    validator.checkResult, checkAvailable, upload, function (req, res, next) {
+      if(!req.file){
+        return res.status(400).json({
+          errors:[{
+            message: "No file found."
+          }]
+        });
+      }
+      DefaultStorage.moveFile(req.params, req.file.path, function (err) {
+        if (err) {
+          if (err.code === 'EEXIST') {
+            return res.status(409).send();
+          } else {
+            return next(err);
+          }
+        }
+        return res.status(201).send();
+      });
+    });
 
-  });
+  router.put('/document/:collection/:id/attachment/:cid', validator.cid,
+    header('content-length').toInt().custom((value) => value < maxFileSize),
+    validator.checkResult, checkAvailable, function (req, res, next) {
+      const filename = req.params.cid + '.' + Math.round(Math.random() * 1E9);
+      const pathname = path.join(storageConfig.uploads_tmpdir, filename);
+      const writeStream = fs.createWriteStream(pathname);
+      writeStream.on('error', function (error) {
+        if (error !== 'aborted') {
+          next(error);
+        }
+        fs.unlink(pathname, (error) => error && console.error(error));
+      });
+      writeStream.on('finish', function () {
+        DefaultStorage.moveFile(req.params, pathname, function (err) {
+          if (err) {
+            if (err.code === 'EEXIST') {
+              return res.status(409).send();
+            } else {
+              return next(err);
+            }
+          }
+          return res.status(201).send();
+        });
+      });
+      req.on('aborted', function () {
+        writeStream.destroy('aborted');
+      });
+      req.pipe(writeStream);
+    });
+}
 
 module.exports = router;

@@ -6,5 +6,11 @@
             "poolSize": 5,
             "useUnifiedTopology": true
         }
+    },
+    "attachment_default_storage": {
+        "uploads_tmpdir":"uploads/",
+        "url_prefix": "/attachment",
+        "storage_dir": "public/attachment",
+        "max_file_size": "1GB"
     }
 }

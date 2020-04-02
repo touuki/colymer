@@ -287,6 +287,8 @@ paths:
       responses:
         201:
           description: "Created"
+        400:
+          description: "Invalid Input"
         409:
           description: "File exist"
         500:
@@ -302,6 +304,8 @@ paths:
       responses:
         201:
           description: "Created"
+        400:
+          description: "Invalid Input"
         409:
           description: "File exist"
         500:

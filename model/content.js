@@ -1,5 +1,5 @@
 const mime = require('mime-types');
-const AttachmentStorage = require('../utils/attachment-storage');
+const StorageProxy = require('../utils/attachment-storage').StorageProxy;
 
 class Content {
   constructor(obj, collection, id) {
@@ -60,7 +60,7 @@ class Content {
         cid: element.cid,
         original_url: element.original_url,
         content_type: element.content_type,
-        url: AttachmentStorage.getUrl(element),
+        url: StorageProxy.getUrl(element),
       };
       obj.attachments.push(attachment);
     }

@@ -11,14 +11,15 @@
     "url": "https://github.com/touuki/colymer"
   },
   "dependencies": {
-    "cookie-parser": "^1.4.4",
-    "debug": "^2.6.9",
-    "express": "^4.16.1",
-    "http-errors": "^1.6.3",
+    "cookie-parser": "^1.4.5",
+    "express": "^4.17.1",
+    "http-errors": "^1.7.3",
     "pug": "^2.0.4",
-    "morgan": "^1.9.1",
+    "morgan": "^1.10.0",
     "mongodb": "^3.5.5",
     "express-validator": "^6.4.0",
-    "mime-types": "^2.1.26"
+    "mime-types": "^2.1.26",
+    "multer": "^1.4.2",
+    "bytes": "^3.1.0"
   }
 }
