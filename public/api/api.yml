@@ -316,26 +316,35 @@ definitions:
     properties:
       author_id:
         type: "string"
+        example: "5128446"
       author_name:
         type: "string"
+        example: "first author"
       is_html:
         type: "boolean"
         default: false
       title:
         type: "string"
+        example: "Example Title"
       text:
         type: "string"
+        example: "This is an example."
       time:
         type: "string"
         format: "date-time"
       category:
         type: "string"
+        example: "paper"
       original_url:
         type: "string"
+        example: "http://www.example.com/5128446"
       labels:
         type: "array"
         items: 
           type: "string"
+        example:
+          - "example"
+          - "text"
       attachments:
         type: "array"
         items:
@@ -352,9 +361,12 @@ definitions:
               type: "string"
           required:
             - cid
+        example: ~
       version:
-        description: "Optimistic locking. Required for `PUT` update."
-        type: "integer"
+        description: "Optimistic locking/Last modified time. Required for `PUT` update."
+        type: "string"
+        format: "date-time"
+        example: ~
     required:
       - title
       - text
@@ -373,5 +385,8 @@ definitions:
         type: "array"
         items:
           $ref: "#/definitions/Content"
+      created_time:
+        type: "string"
+        format: "date-time"
       archive_count:
         type: "integer"

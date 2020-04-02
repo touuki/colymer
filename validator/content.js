@@ -31,9 +31,7 @@ module.exports = checkSchema({
     in: 'body',
     isISO8601: true,
     customSanitizer: {
-      options: (value) => {
-        return value ? new Date(value) : value;
-      },
+      options: (value) => value ? new Date(value) : value,
     },
     optional: {
       options: {
@@ -55,7 +53,11 @@ module.exports = checkSchema({
   labels: {
     in: 'body',
     isArray: true,
-    optional: true,
+    optional: {
+      options: {
+        nullable: true,
+      }
+    },
   },
   'labels.*': {
     in: 'body',
@@ -66,7 +68,11 @@ module.exports = checkSchema({
   attachments: {
     in: 'body',
     isArray: true,
-    optional: true,
+    optional: {
+      options: {
+        nullable: true,
+      }
+    },
   },
   'attachments.*.cid': {
     in: 'body',
@@ -89,8 +95,14 @@ module.exports = checkSchema({
   },
   version: {
     in: 'body',
-    isInt: true,
-    toInt: true,
-    optional: true,
+    isISO8601: true,
+    customSanitizer: {
+      options: (value) => value ? new Date(value) : value,
+    },
+    optional: {
+      options: {
+        nullable: true,
+      }
+    },
   },
 });

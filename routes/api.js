@@ -53,9 +53,8 @@ router.post('/document/:collection/:id/content',
     const content = new Content(req.body, req.params.collection, req.params.id);
     StorageProxy.checkExistence(content.attachments, function (err) {
       if (err) {
-        return res.status(400).json({ errors: err });
+        return res.status(400).json({ errors: [err] });
       }
-      const obj = content.toDB();
       mongodb().collection(req.params.collection).findOne({
         _id: req.params.id,
       }, {
@@ -65,13 +64,11 @@ router.post('/document/:collection/:id/content',
         if (result) {
           // Update
           const original_content = new Content(result.content, req.params.collection, req.params.id);
-          const version = original_content.version;
-          obj.version = version + 1;
           mongodb().collection(req.params.collection).updateOne({
             _id: req.params.id,
-            'content.version': version
+            'content.version': original_content.version
           }, {
-            $set: { content: obj },
+            $set: { content: content.toDB() },
             $inc: { archive_count: 1 },
             $push: { archives: original_content.toDB() },
           }, {
@@ -87,17 +84,22 @@ router.post('/document/:collection/:id/content',
         }
         else {
           // Insert
-          obj.version = 1;
           mongodb().collection(req.params.collection).insertOne({
             _id: req.params.id,
-            content: obj,
+            content: content.toDB(),
             metadata: {},
             archives: [],
             archive_count: 0,
+            created_time: new Date()
           }, {
             ignoreUndefined: true,
           }, function (error, result) {
-            if (error) return next(error);
+            if (error) {
+              if(error.code === 11000 && error.keyPattern && error.keyPattern._id){
+                return res.status(503).send();
+              }
+              return next(error);
+            }
             res.status(201).send();
           });
         }
@@ -110,18 +112,15 @@ router.put('/document/:collection/:id/content',
     const content = new Content(req.body, req.params.collection, req.params.id);
     StorageProxy.checkExistence(content.attachments, function (err) {
       if (err) {
-        return res.status(400).json({ errors: err });
+        return res.status(400).json({ errors: [err] });
       }
-      const version = content.version;
-      const obj = content.toDB();
-      if (version) {
+      if (content.version) {
         // Update
-        obj.version = version + 1;
         mongodb().collection(req.params.collection).updateOne({
           _id: req.params.id,
-          'content.version': version
+          'content.version': content.version
         }, {
-          $set: { content: obj },
+          $set: { content: content.toDB() },
         }, {
           ignoreUndefined: true,
         }, function (error, result) {
@@ -134,17 +133,22 @@ router.put('/document/:collection/:id/content',
         });
       } else {
         // Insert
-        obj.version = 1;
         mongodb().collection(req.params.collection).insertOne({
           _id: req.params.id,
-          content: obj,
+          content: content.toDB(),
           metadata: {},
           archives: [],
           archive_count: 0,
+          created_time: new Date()
         }, {
           ignoreUndefined: true,
         }, function (error, result) {
-          if (error) return next(error);
+          if (error) {
+            if(error.code === 11000 && error.keyPattern && error.keyPattern._id){
+              return res.status(409).send();
+            }
+            return next(error);
+          }
           res.status(201).send();
         });
       }
@@ -253,7 +257,7 @@ if (StorageProxy.storage === DefaultStorage) {
   };
 
   router.post('/document/:collection/:id/attachment/:cid', validator.cid,
-    header('content-length').toInt().custom((value) => value < maxFileSize),
+    header('content-length').custom((value) => parseInt(value) < maxFileSize),
     validator.checkResult, checkAvailable, upload, function (req, res, next) {
       if(!req.file){
         return res.status(400).json({
@@ -275,7 +279,7 @@ if (StorageProxy.storage === DefaultStorage) {
     });
 
   router.put('/document/:collection/:id/attachment/:cid', validator.cid,
-    header('content-length').toInt().custom((value) => value < maxFileSize),
+    header('content-length').custom((value) => parseInt(value) < maxFileSize),
     validator.checkResult, checkAvailable, function (req, res, next) {
       const filename = req.params.cid + '.' + Math.round(Math.random() * 1E9);
       const pathname = path.join(storageConfig.uploads_tmpdir, filename);

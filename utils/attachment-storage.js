@@ -38,7 +38,6 @@ class DefaultStorage {
   }
 
   static checkExistence(attachments, callback) {
-    const errors = [];
     let i = 0;
     const _callback = function (error, exist, attachment) {
       if (error) return callback(error);
@@ -50,9 +49,15 @@ class DefaultStorage {
       }
       if (i < attachments.length) {
         this.exists(attachments[i++], _callback);
+      } else {
+        callback(null);
       }
     }
-    this.exists(attachments[i++], _callback);
+    if (i < attachments.length) {
+      this.exists(attachments[i++], _callback);
+    } else {
+      callback(null);
+    }
   }
 
   static exists(attachment, callback) {

@@ -35,7 +35,7 @@ class Content {
         return false;
       });
     })(obj.attachments) : [];
-    this.version = Number.isInteger(obj.version) ? obj.version : 0;
+    this.version = obj.version instanceof Date ? obj.version : null;
   }
 
   toView() {
@@ -50,7 +50,7 @@ class Content {
       original_url: this.original_url,
       labels: [],
       attachments: [],
-      version: this.version,
+      version: this.version ? this.version.toISOString() : null,
     };
     for (const label of this.labels) {
       obj.labels.push(label);
@@ -71,7 +71,7 @@ class Content {
     const obj = {
       labels: [],
       attachments: [],
-      version: this.version,
+      version: new Date(),
     };
     this.author_id && (obj.author_id = this.author_id);
     this.author_name && (obj.author_name = this.author_name);
