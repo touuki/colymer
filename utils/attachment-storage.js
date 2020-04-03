@@ -1,6 +1,5 @@
 const path = require('path');
 const fs = require('fs');
-const mime = require('mime-types');
 const storageConfig = require('../config').attachment_default_storage;
 
 class DefaultStorage {

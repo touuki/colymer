@@ -28,9 +28,9 @@ parameters:
     required: true
     type: "string"
 produces:
-- "application/json"
+  - "application/json"
 consumes:
-- "application/json"
+  - "application/json"
 paths:
   /document/{collection}/{id}:
     parameters:
@@ -45,6 +45,8 @@ paths:
       responses:
         204:
           description: "OK"
+        400:
+          description: "Invalid Input"
         404:
           description: "Not Found"
         500:
@@ -54,7 +56,7 @@ paths:
       - $ref: "#/parameters/collection"
       - $ref: "#/parameters/id"
     get:
-      tags: 
+      tags:
         - content
       summary: "Get content"
       description: "Get content"
@@ -64,23 +66,25 @@ paths:
           description: "OK"
           schema:
             $ref: "#/definitions/Content"
+        400:
+          description: "Invalid Input"
         404:
           description: "Not Found"
         500:
           description: "Error"
     post:
-      tags: 
+      tags:
         - content
       summary: "Insert/Update (archive) content"
       description: "Insert/Update content. It will archive the original content into `archives` if the content already exists."
       operationId: "postContent"
       parameters:
-      - name: "body"
-        in: "body"
-        description: "Content object"
-        required: true
-        schema:
-          $ref: "#/definitions/Content"
+        - name: "content"
+          in: "body"
+          description: "Content object"
+          required: true
+          schema:
+            $ref: "#/definitions/Content"
       responses:
         201:
           description: "Created"
@@ -93,17 +97,17 @@ paths:
         503:
           description: "Try again"
     put:
-      tags: 
+      tags:
         - content
       summary: "Insert/Update (no archive) content"
       description: "Insert/Update content. It will not archive the original content if the content already exists."
       operationId: "putContent"
       parameters:
-      - name: "body"
-        in: "body"
-        description: "Content object"
-        schema:
-          $ref: "#/definitions/Content"
+        - name: "content"
+          in: "body"
+          description: "Content object"
+          schema:
+            $ref: "#/definitions/Content"
       responses:
         201:
           description: "Created"
@@ -120,7 +124,7 @@ paths:
       - $ref: "#/parameters/collection"
       - $ref: "#/parameters/id"
     get:
-      tags: 
+      tags:
         - archive
       summary: "Get archive count"
       description: "Get archive count"
@@ -133,6 +137,8 @@ paths:
             properties:
               archive_count:
                 type: "integer"
+        400:
+          description: "Invalid Input"
         404:
           description: "Not Found"
         500:
@@ -142,7 +148,7 @@ paths:
       - $ref: "#/parameters/collection"
       - $ref: "#/parameters/id"
     get:
-      tags: 
+      tags:
         - archive
       summary: "Get archive array"
       description: "Get archive array"
@@ -154,6 +160,8 @@ paths:
             type: "array"
             items:
               $ref: "#/definitions/Content"
+        400:
+          description: "Invalid Input"
         404:
           description: "Not Found"
         500:
@@ -163,17 +171,17 @@ paths:
       - $ref: "#/parameters/collection"
       - $ref: "#/parameters/id"
     get:
-      tags: 
+      tags:
         - archive
       summary: "Get specific archive"
       description: "Get specific archive version"
       operationId: "getArchive"
       parameters:
-      - name: "index"
-        in: "path"
-        description: "Index in archive array"
-        required: true
-        type: "integer"
+        - name: "index"
+          in: "path"
+          description: "Index in archive array"
+          required: true
+          type: "integer"
       responses:
         200:
           description: "OK"
@@ -268,6 +276,8 @@ paths:
             format: "binary"
         302:
           description: "Found"
+        400:
+          description: "Invalid Input"
         500:
           description: "Error"
     post:
@@ -310,6 +320,84 @@ paths:
           description: "File exist"
         500:
           description: "Error"
+  /document/{collection}/{id}/metadata:
+    parameters:
+      - $ref: "#/parameters/collection"
+      - $ref: "#/parameters/id"
+    get:
+      tags:
+        - metadata
+      summary: "Get metadata"
+      description: "Get metadata of the document."
+      operationId: "getMetadata"
+      parameters:
+        - name: "fields"
+          in: "query"
+          description: "The fields should be returned. Use `,` to split. Return all if not present."
+          type: "array"
+          items:
+            type: "string"
+      responses:
+        200:
+          description: "OK"
+          schema:
+            type: "object"
+        400:
+          description: "Invalid Input"
+        404:
+          description: "Not Found"
+        500:
+          description: "Error"
+    put:
+      tags:
+        - metadata
+      summary: "Update metadata"
+      description: "Update metadata"
+      operationId: "putMetadata"
+      parameters:
+        - name: "replace"
+          in: "query"
+          description: "Whether to replace all fields no matter if the field presents in body."
+          type: "boolean"
+          default: false
+        - name: "metadata"
+          in: "body"
+          description: "Updated metadata entity"
+          required: true
+          schema:
+            type: "object"
+      responses:
+        204:
+          description: "Updated"
+        400:
+          description: "Invalid Input"
+        404:
+          description: "Not Found"
+        500:
+          description: "Error"
+    delete:
+      tags:
+        - metadata
+      summary: "Update metadata"
+      description: "Update metadata"
+      operationId: "deleteMetadata"
+      parameters:
+        - name: "fields"
+          in: "query"
+          description: "The fields should be deleted. Use `,` to split."
+          required: true
+          type: "array"
+          items:
+            type: "string"
+      responses:
+        204:
+          description: "Deleted"
+        400:
+          description: "Invalid Input"
+        404:
+          description: "Not Found"
+        500:
+          description: "Error"
 definitions:
   Content:
     type: "object"
@@ -340,7 +428,7 @@ definitions:
         example: "http://www.example.com/5128446"
       labels:
         type: "array"
-        items: 
+        items:
           type: "string"
         example:
           - "example"

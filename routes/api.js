@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-const { param, query, header } = require('express-validator');
+const { param, query, body, header } = require('express-validator');
 const path = require('path');
 
 const validator = require('../validator');
@@ -95,7 +95,7 @@ router.post('/document/:collection/:id/content',
             ignoreUndefined: true,
           }, function (error, result) {
             if (error) {
-              if(error.code === 11000 && error.keyPattern && error.keyPattern._id){
+              if (error.code === 11000 && error.keyPattern && error.keyPattern._id) {
                 return res.status(503).send();
               }
               return next(error);
@@ -144,7 +144,7 @@ router.put('/document/:collection/:id/content',
           ignoreUndefined: true,
         }, function (error, result) {
           if (error) {
-            if(error.code === 11000 && error.keyPattern && error.keyPattern._id){
+            if (error.code === 11000 && error.keyPattern && error.keyPattern._id) {
               return res.status(409).send();
             }
             return next(error);
@@ -259,9 +259,9 @@ if (StorageProxy.storage === DefaultStorage) {
   router.post('/document/:collection/:id/attachment/:cid', validator.cid,
     header('content-length').custom((value) => parseInt(value) < maxFileSize),
     validator.checkResult, checkAvailable, upload, function (req, res, next) {
-      if(!req.file){
+      if (!req.file) {
         return res.status(400).json({
-          errors:[{
+          errors: [{
             message: "No file found."
           }]
         });
@@ -308,5 +308,79 @@ if (StorageProxy.storage === DefaultStorage) {
       req.pipe(writeStream);
     });
 }
+
+router.get('/document/:collection/:id/metadata',
+  validator.fields.optional(), validator.checkResult, function (req, res, next) {
+    const projection = {}
+    if (req.query.fields) {
+      for (const field of req.query.fields) {
+        projection['metadata.' + field] = 1;
+      }
+    } else {
+      projection.metadata = 1;
+    }
+    mongodb().collection(req.params.collection).findOne({
+      _id: req.params.id
+    }, { projection }, function (error, result) {
+      if (error) return next(error);
+      if (result)
+        res.status(200).json(result.metadata || {});
+      else
+        res.status(404).send();
+    });
+  });
+
+router.put('/document/:collection/:id/metadata', query('replace').toBoolean(), body().custom((value) => {
+  const pattern = /^[a-zA-Z0-9_]+$/;
+  for (const key in value) {
+    if (value.hasOwnProperty(key) && !pattern.test(key)) {
+      return false;
+    }
+  }
+  return true;
+}), validator.checkResult, function (req, res, next) {
+  const $set = {};
+  if (req.query.replace) {
+    $set.metadata = req.body;
+  } else {
+    for (const key in req.body) {
+      if (req.body.hasOwnProperty(key)) {
+        $set['metadata.' + key] = req.body[key];
+      }
+    }
+  }
+  mongodb().collection(req.params.collection).updateOne({
+    _id: req.params.id
+  }, { $set }, {
+    ignoreUndefined: true,
+  }, function (error, result) {
+    if (error) return next(error);
+    if (result.matchedCount) {
+      res.status(204).send();
+    } else {
+      res.status(404).send();
+    }
+  });
+});
+
+router.delete('/document/:collection/:id/metadata',
+  validator.fields.notEmpty(), validator.checkResult, function (req, res, next) {
+    const $unset = {};
+    for (const field of req.query.fields) {
+      $unset['metadata.' + field] = '';
+    }
+    mongodb().collection(req.params.collection).updateOne({
+      _id: req.params.id
+    }, { $unset }, {
+      ignoreUndefined: true,
+    }, function (error, result) {
+      if (error) return next(error);
+      if (result.matchedCount) {
+        res.status(204).send();
+      } else {
+        res.status(404).send();
+      }
+    });
+  });
 
 module.exports = router;
