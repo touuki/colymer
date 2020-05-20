@@ -5,15 +5,10 @@ info:
   version: "1.0"
 basePath: /api
 tags:
-  - name: document
-    description: "A document contains content, metadata and archives."
-  - name: content
-    description: "A single content item such as a web page, an article, an email or a tweet etc."
-  - name: archive
-    description: "History version of the content."
+  - name: article
+    description: "A single article item such as a blog, an email or a tweet etc."
   - name: attachment
-    description: "Attachment of the document."
-  - name: metadata
+    description: "Attachment of the article."
 parameters:
   collection:
     name: "collection"
@@ -21,51 +16,31 @@ parameters:
     description: "Collection name"
     required: true
     type: "string"
-  id:
-    name: "id"
-    in: "path"
-    description: "Document id"
-    required: true
-    type: "string"
 produces:
   - "application/json"
 consumes:
   - "application/json"
 paths:
-  /document/{collection}/{id}:
+  /article/{collection}:
     parameters:
       - $ref: "#/parameters/collection"
-      - $ref: "#/parameters/id"
-    delete:
-      tags:
-        - document
-      summary: "Delete document"
-      description: "Delete document"
-      operationId: "deleteDocument"
-      responses:
-        204:
-          description: "OK"
-        400:
-          description: "Invalid Input"
-        404:
-          description: "Not Found"
-        500:
-          description: "Error"
-  /document/{collection}/{id}/content:
-    parameters:
-      - $ref: "#/parameters/collection"
-      - $ref: "#/parameters/id"
     get:
       tags:
-        - content
-      summary: "Get content"
-      description: "Get content"
-      operationId: "getContent"
+        - article
+      summary: "Get article"
+      description: "Get article"
+      operationId: "getArticle"
+      parameters:
+        - name: "_id"
+          in: "query"
+          description: "Document _id"
+          required: true
+          type: "string"
       responses:
         200:
           description: "OK"
           schema:
-            $ref: "#/definitions/Content"
+            $ref: "#/definitions/Article"
         400:
           description: "Invalid Input"
         404:
@@ -74,17 +49,17 @@ paths:
           description: "Error"
     post:
       tags:
-        - content
-      summary: "Insert/Update (archive) content"
-      description: "Insert/Update content. It will archive the original content into `archives` if the content already exists."
-      operationId: "postContent"
+        - article
+      summary: "Insert article"
+      description: "Insert article. Not override any existing article."
+      operationId: "postArticle"
       parameters:
-        - name: "content"
+        - name: "article"
           in: "body"
-          description: "Content object"
+          description: "Article object"
           required: true
           schema:
-            $ref: "#/definitions/Content"
+            $ref: "#/definitions/Article"
       responses:
         201:
           description: "Created"
@@ -94,20 +69,18 @@ paths:
           description: "Invalid Input"
         500:
           description: "Error"
-        503:
-          description: "Try again"
     put:
       tags:
-        - content
-      summary: "Insert/Update (no archive) content"
-      description: "Insert/Update content. It will not archive the original content if the content already exists."
-      operationId: "putContent"
+        - article
+      summary: "Insert/Update article (Override)"
+      description: "Insert/Update article. Override the article possessing the same id and version."
+      operationId: "putArticle"
       parameters:
-        - name: "content"
+        - name: "article"
           in: "body"
-          description: "Content object"
+          description: "Article object"
           schema:
-            $ref: "#/definitions/Content"
+            $ref: "#/definitions/Article"
       responses:
         201:
           description: "Created"
@@ -115,88 +88,32 @@ paths:
           description: "Updated"
         400:
           description: "Invalid Input"
-        409:
-          description: "Conflict"
         500:
           description: "Error"
-  /document/{collection}/{id}/archive-count:
-    parameters:
-      - $ref: "#/parameters/collection"
-      - $ref: "#/parameters/id"
-    get:
+    delete:
       tags:
-        - archive
-      summary: "Get archive count"
-      description: "Get archive count"
-      operationId: "getArchiveCount"
-      responses:
-        200:
-          description: "OK"
-          schema:
-            type: "object"
-            properties:
-              archive_count:
-                type: "integer"
-        400:
-          description: "Invalid Input"
-        404:
-          description: "Not Found"
-        500:
-          description: "Error"
-  /document/{collection}/{id}/archives:
-    parameters:
-      - $ref: "#/parameters/collection"
-      - $ref: "#/parameters/id"
-    get:
-      tags:
-        - archive
-      summary: "Get archive array"
-      description: "Get archive array"
-      operationId: "getArchives"
-      responses:
-        200:
-          description: "OK"
-          schema:
-            type: "array"
-            items:
-              $ref: "#/definitions/Content"
-        400:
-          description: "Invalid Input"
-        404:
-          description: "Not Found"
-        500:
-          description: "Error"
-  /document/{collection}/{id}/archive/{index}:
-    parameters:
-      - $ref: "#/parameters/collection"
-      - $ref: "#/parameters/id"
-    get:
-      tags:
-        - archive
-      summary: "Get specific archive"
-      description: "Get specific archive version"
-      operationId: "getArchive"
+        - article
+      summary: "Delete article"
+      description: "Delete article"
+      operationId: "deleteArticle"
       parameters:
-        - name: "index"
-          in: "path"
-          description: "Index in archive array"
+        - name: "_id"
+          in: "query"
+          description: "Document _id"
           required: true
-          type: "integer"
+          type: "string"
       responses:
-        200:
+        204:
           description: "OK"
-          schema:
-            $ref: "#/definitions/Content"
         400:
           description: "Invalid Input"
         404:
           description: "Not Found"
         500:
           description: "Error"
-  /document/{collection}/{id}/attachment-upload-method:
+  /attachment-upload/{collection}:
     parameters:
       - $ref: "#/parameters/collection"
-      - $ref: "#/parameters/id"
     get:
       tags:
         - attachment
@@ -204,9 +121,9 @@ paths:
       description: "Get the upload method of the attachment"
       operationId: "getUploadUrl"
       parameters:
-        - name: "filename"
+        - name: "path"
           in: "query"
-          description: "File's name"
+          description: "The path to save attachment"
           required: true
           type: "string"
         - name: "isFormData"
@@ -220,46 +137,55 @@ paths:
           schema:
             type: "object"
             properties:
-              method:
-                type: "string"
-                enum:
-                  - POST
-                  - PUT
-              url:
-                type: "string"
-              headers:
-                type: "array"
-                items:
-                  type: "object"
-                  properties:
-                    name:
-                      type: "string"
-                    value:
-                      type: "string"
-              formData:
-                type: "array"
-                items:
-                  type: "object"
-                  properties:
-                    name:
-                      type: "string"
-                    value:
-                      type: "string"
-              formField:
-                type: "string"
-              cid:
-                type: "string"
+              upload:
+                type: "object"
+                properties:
+                  method:
+                    type: "string"
+                    enum:
+                      - POST
+                      - PUT
+                  url:
+                    type: "string"
+                  headers:
+                    type: "array"
+                    items:
+                      type: "object"
+                      properties:
+                        name:
+                          type: "string"
+                        value:
+                          type: "string"
+                  formData:
+                    type: "array"
+                    items:
+                      type: "object"
+                      properties:
+                        name:
+                          type: "string"
+                        value:
+                          type: "string"
+                  formField:
+                    type: "string"
+              file:
+                type: "object"
+                properties:
+                  filename:
+                    type: "string"
+                  url:
+                    type: "string"
+                  content_type:
+                    type: "string"
         400:
           description: "Invalid Input"
         500:
           description: "Error"
-  /document/{collection}/{id}/attachment/{cid}:
+  /attachment/{collection}:
     parameters:
       - $ref: "#/parameters/collection"
-      - $ref: "#/parameters/id"
-      - name: "cid"
-        in: "path"
-        description: "Content ID"
+      - name: "path"
+        in: "query"
+        description: "The path to save attachment"
         required: true
         type: "string"
     get:
@@ -269,11 +195,6 @@ paths:
       description: "Get attachment"
       operationId: "getAttachment"
       responses:
-        200:
-          description: "OK"
-          schema:
-            type: "string"
-            format: "binary"
         302:
           description: "Found"
         400:
@@ -299,8 +220,6 @@ paths:
           description: "Created"
         400:
           description: "Invalid Input"
-        409:
-          description: "File exist"
         500:
           description: "Error"
     put:
@@ -316,165 +235,66 @@ paths:
           description: "Created"
         400:
           description: "Invalid Input"
-        409:
-          description: "File exist"
-        500:
-          description: "Error"
-  /document/{collection}/{id}/metadata:
-    parameters:
-      - $ref: "#/parameters/collection"
-      - $ref: "#/parameters/id"
-    get:
-      tags:
-        - metadata
-      summary: "Get metadata"
-      description: "Get metadata of the document."
-      operationId: "getMetadata"
-      parameters:
-        - name: "fields"
-          in: "query"
-          description: "The fields should be returned. Use `,` to split. Return all if not present."
-          type: "array"
-          items:
-            type: "string"
-      responses:
-        200:
-          description: "OK"
-          schema:
-            type: "object"
-        400:
-          description: "Invalid Input"
-        404:
-          description: "Not Found"
-        500:
-          description: "Error"
-    put:
-      tags:
-        - metadata
-      summary: "Update metadata"
-      description: "Update metadata"
-      operationId: "putMetadata"
-      parameters:
-        - name: "replace"
-          in: "query"
-          description: "Whether to replace all fields no matter if the field presents in body."
-          type: "boolean"
-          default: false
-        - name: "metadata"
-          in: "body"
-          description: "Updated metadata entity"
-          required: true
-          schema:
-            type: "object"
-      responses:
-        204:
-          description: "Updated"
-        400:
-          description: "Invalid Input"
-        404:
-          description: "Not Found"
-        500:
-          description: "Error"
-    delete:
-      tags:
-        - metadata
-      summary: "Update metadata"
-      description: "Update metadata"
-      operationId: "deleteMetadata"
-      parameters:
-        - name: "fields"
-          in: "query"
-          description: "The fields should be deleted. Use `,` to split."
-          required: true
-          type: "array"
-          items:
-            type: "string"
-      responses:
-        204:
-          description: "Deleted"
-        400:
-          description: "Invalid Input"
-        404:
-          description: "Not Found"
         500:
           description: "Error"
 definitions:
-  Content:
+  Article:
     type: "object"
     properties:
-      author_id:
+      id:
         type: "string"
-        example: "5128446"
-      author_name:
-        type: "string"
-        example: "first author"
-      is_html:
-        type: "boolean"
-        default: false
+        example: "322"
+      author:
+        type: "object"
+        properties:
+          id:
+            type: "string"
+            example: "5128446"
+          name:
+            type: "string"
+            example: "first author"
       title:
         type: "string"
         example: "Example Title"
-      text:
+      content:
         type: "string"
         example: "This is an example."
+      content_type:
+        type: "string"
+        example: "text/html"
       time:
         type: "string"
         format: "date-time"
-      category:
-        type: "string"
-        example: "paper"
+      metadata:
+        type: "object"
       original_url:
         type: "string"
         example: "http://www.example.com/5128446"
-      labels:
-        type: "array"
-        items:
-          type: "string"
-        example:
-          - "example"
-          - "text"
       attachments:
         type: "array"
         items:
-          type: "object"
-          properties:
-            url:
-              type: "string"
-              readOnly: true
-            original_url:
-              type: "string"
-            cid:
-              type: "string"
-            content_type:
-              type: "string"
-          required:
-            - cid
-        example: ~
+          $ref: "#/definitions/Attachment"
       version:
-        description: "Optimistic locking/Last modified time. Required for `PUT` update."
         type: "string"
-        format: "date-time"
-        example: ~
     required:
-      - title
-      - text
-      - time
-  Document:
+      - content
+  Attachment:
     type: "object"
     properties:
-      _id:
+      id:
         type: "string"
-      content:
-        $ref: "#/definitions/Content"
+      filename:
+        type: "string"
+      url:
+        type: "string"
+        example: "http://example.com/attachment.jpg"
+      content_type:
+        type: "string"
+        example: "image/jpeg"
+      original_url:
+        type: "string"
+        example: "http://example.com/attachment.jpg"
+      path:
+        type: "string"
       metadata:
         type: "object"
-        description: "Custom data. It can be used to organize the relationship between the content, store the raw data, or classify the content etc. The fields starting with `_` should be reserved for extension."
-      archives:
-        type: "array"
-        items:
-          $ref: "#/definitions/Content"
-      created_time:
-        type: "string"
-        format: "date-time"
-      archive_count:
-        type: "integer"
