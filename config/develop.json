@@ -1,16 +1,22 @@
 {
     "mongodb": {
-        "url": "mongodb://10.8.1.1:27017/",
+        "url": "mongodb://192.168.30.1:27017/",
         "db": "colymer",
         "options": {
+            "authSource": "colymer",
+            "auth": {
+                "user": "colymer",
+                "password": "colymer"
+            },
             "poolSize": 5,
             "useUnifiedTopology": true
         }
     },
-    "attachment_default_storage": {
+    "storage": "default",
+    "default_storage_options": {
         "uploads_tmpdir":"uploads/",
         "url_prefix": "/attachment",
-        "storage_dir": "public/attachment",
+        "directory": "public/attachment",
         "max_file_size": "1GB"
     }
 }

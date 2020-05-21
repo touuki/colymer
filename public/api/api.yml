@@ -16,6 +16,12 @@ parameters:
     description: "Collection name"
     required: true
     type: "string"
+  _id:
+    name: "_id"
+    in: "query"
+    description: "Document _id"
+    required: true
+    type: "string"
 produces:
   - "application/json"
 consumes:
@@ -27,24 +33,25 @@ paths:
     get:
       tags:
         - article
-      summary: "Get article"
-      description: "Get article"
-      operationId: "getArticle"
+      summary: "Query articles"
+      description: "Query articles"
+      operationId: "queryArticles"
       parameters:
-        - name: "_id"
-          in: "query"
-          description: "Document _id"
+        - name: "query object"
+          in: "body"
+          description: "Query object"
           required: true
-          type: "string"
+          schema:
+            type: "object"
       responses:
         200:
           description: "OK"
           schema:
-            $ref: "#/definitions/Article"
+            type: "array"
+            items:
+              $ref: "#/definitions/Article"
         400:
           description: "Invalid Input"
-        404:
-          description: "Not Found"
         500:
           description: "Error"
     post:
@@ -54,6 +61,16 @@ paths:
       description: "Insert article. Not override any existing article."
       operationId: "postArticle"
       parameters:
+        - name: "auto_attachments"
+          in: "query"
+          description: "Whether to process attachments automaticly."
+          type: "boolean"
+          default: false
+        - name: "replace"
+          in: "query"
+          description: "Whether to replace an article with the same id and version already exists."
+          type: "boolean"
+          default: "false"
         - name: "article"
           in: "body"
           description: "Article object"
@@ -67,23 +84,49 @@ paths:
           description: "Updated"
         400:
           description: "Invalid Input"
+        409:
+          description: "Conflict"
+        500:
+          description: "Error"
+  /article/{collection}/{_id}:
+    parameters:
+      - $ref: "#/parameters/collection"
+      - $ref: "#/parameters/_id"
+    get:
+      tags:
+        - article
+      summary: "Get article"
+      description: "Get article"
+      operationId: "getArticle"
+      responses:
+        200:
+          description: "OK"
+          schema:
+            $ref: "#/definitions/Article"
+        400:
+          description: "Invalid Input"
+        404:
+          description: "Not Found"
         500:
           description: "Error"
     put:
       tags:
         - article
-      summary: "Insert/Update article (Override)"
-      description: "Insert/Update article. Override the article possessing the same id and version."
+      summary: "Update article"
+      description: "Update article."
       operationId: "putArticle"
       parameters:
+        - name: "auto_attachments"
+          in: "query"
+          description: "Whether to process attachments automaticly."
+          type: "boolean"
+          default: false
         - name: "article"
           in: "body"
           description: "Article object"
           schema:
             $ref: "#/definitions/Article"
       responses:
-        201:
-          description: "Created"
         204:
           description: "Updated"
         400:
@@ -96,12 +139,6 @@ paths:
       summary: "Delete article"
       description: "Delete article"
       operationId: "deleteArticle"
-      parameters:
-        - name: "_id"
-          in: "query"
-          description: "Document _id"
-          required: true
-          type: "string"
       responses:
         204:
           description: "OK"
@@ -111,7 +148,7 @@ paths:
           description: "Not Found"
         500:
           description: "Error"
-  /attachment-upload/{collection}:
+  /upload-info/attachment/{collection}:
     parameters:
       - $ref: "#/parameters/collection"
     get:
@@ -128,7 +165,7 @@ paths:
           type: "string"
         - name: "isFormData"
           in: "query"
-          description: "Whether use multipart/form-data to upload file or not"
+          description: "Whether to use multipart/form-data to upload file."
           type: "boolean"
           default: false
       responses:
@@ -170,11 +207,13 @@ paths:
               file:
                 type: "object"
                 properties:
-                  filename:
+                  name:
                     type: "string"
                   url:
                     type: "string"
                   content_type:
+                    type: "string"
+                  path:
                     type: "string"
         400:
           description: "Invalid Input"
