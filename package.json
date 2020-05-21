@@ -20,6 +20,7 @@
     "express-validator": "^6.4.0",
     "mime-types": "^2.1.26",
     "multer": "^1.4.2",
-    "bytes": "^3.1.0"
+    "bytes": "^3.1.0",
+    "cheerio": "^1.0.0-rc.3"
   }
 }

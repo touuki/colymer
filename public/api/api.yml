@@ -61,9 +61,9 @@ paths:
       description: "Insert article. Not override any existing article."
       operationId: "postArticle"
       parameters:
-        - name: "auto_attachments"
+        - name: "resolve_attachments"
           in: "query"
-          description: "Whether to process attachments automaticly."
+          description: "Whether to process attachments automaticly for HTML content."
           type: "boolean"
           default: false
         - name: "replace"
@@ -116,9 +116,9 @@ paths:
       description: "Update article."
       operationId: "putArticle"
       parameters:
-        - name: "auto_attachments"
+        - name: "resolve_attachments"
           in: "query"
-          description: "Whether to process attachments automaticly."
+          description: "Whether to process attachments automaticly for HTML content."
           type: "boolean"
           default: false
         - name: "article"

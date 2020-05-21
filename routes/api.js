@@ -5,6 +5,7 @@ const { query } = require('express-validator');
 const path = require('path');
 const mime = require('mime-types');
 
+const utils = require('../utils');
 const validator = require('../validator');
 const storage = require('../storage');
 const mongodb = require('../utils/mongo');
@@ -19,7 +20,11 @@ router.use(function (req, res, next) {
 });
 
 router.post('/article/:collection', validator.collection, query('replace').toBoolean(),
-  validator.article, validator.checkResult, function (req, res, next) {
+  query('resolve_attachments').toBoolean(), validator.article, validator.checkResult,
+  function (req, res, next) {
+    if (req.query.resolve_attachments) {
+      utils.resolveAttachments(req.body);
+    }
     if (req.query.replace && typeof req.body.id !== 'undefined') {
       mongodb().collection(req.params.collection).replaceOne({
         id: req.body.id,
@@ -52,9 +57,7 @@ router.post('/article/:collection', validator.collection, query('replace').toBoo
 
 router.get('/article/:collection/:_id', validator.collection, validator._id,
   validator.checkResult, function (req, res, next) {
-    mongodb().collection(req.params.collection).findOne({
-      _id: req.params._id
-    }, function (error, result) {
+    mongodb().collection(req.params.collection).findOne({ _id: req.params._id }, function (error, result) {
       if (error) return next(error);
       if (result)
         res.status(200).json(result);
@@ -64,21 +67,20 @@ router.get('/article/:collection/:_id', validator.collection, validator._id,
   }
 );
 
-router.put('/article/:collection/:_id', validator.collection, validator._id,
+router.put('/article/:collection/:_id', validator.collection, validator._id, query('resolve_attachments').toBoolean(),
   validator.article, validator.checkResult, function (req, res, next) {
-    mongodb().collection(req.params.collection).updateOne({
-      _id: req.params._id
-    }, { $set: req.body }, {
-      checkKeys: true,
-      ignoreUndefined: true,
-    }, function (error, result) {
-      if (error) return next(error);
-      if (result.matchedCount) {
-        res.status(204).send();
-      } else {
-        res.status(404).send();
-      }
-    });
+    if (req.query.resolve_attachments) {
+      utils.resolveAttachments(req.body);
+    }
+    mongodb().collection(req.params.collection).replaceOne({ _id: req.params._id }, req.body,
+      { ignoreUndefined: true }, function (error, result) {
+        if (error) return next(error);
+        if (result.matchedCount) {
+          res.status(204).send();
+        } else {
+          res.status(404).send();
+        }
+      });
   }
 );
 
