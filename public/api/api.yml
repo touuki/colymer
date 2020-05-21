@@ -18,7 +18,7 @@ parameters:
     type: "string"
   _id:
     name: "_id"
-    in: "query"
+    in: "path"
     description: "Document _id"
     required: true
     type: "string"

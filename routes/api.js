@@ -18,9 +18,7 @@ router.use(function (req, res, next) {
   next();
 });
 
-router.all('/article/:collection/*', validator.collection);
-
-router.post('/article/:collection', query('replace').toBoolean(),
+router.post('/article/:collection', validator.collection, query('replace').toBoolean(),
   validator.article, validator.checkResult, function (req, res, next) {
     if (req.query.replace && typeof req.body.id !== 'undefined') {
       mongodb().collection(req.params.collection).replaceOne({
@@ -52,9 +50,7 @@ router.post('/article/:collection', query('replace').toBoolean(),
   }
 );
 
-router.all('/article/:collection/:_id/*', validator._id);
-
-router.get('/article/:collection/:_id',
+router.get('/article/:collection/:_id', validator.collection, validator._id,
   validator.checkResult, function (req, res, next) {
     mongodb().collection(req.params.collection).findOne({
       _id: req.params._id
@@ -68,7 +64,7 @@ router.get('/article/:collection/:_id',
   }
 );
 
-router.put('/article/:collection/:_id',
+router.put('/article/:collection/:_id', validator.collection, validator._id,
   validator.article, validator.checkResult, function (req, res, next) {
     mongodb().collection(req.params.collection).updateOne({
       _id: req.params._id
@@ -86,7 +82,7 @@ router.put('/article/:collection/:_id',
   }
 );
 
-router.delete('/article/:collection/:_id',
+router.delete('/article/:collection/:_id', validator.collection, validator._id,
   validator.checkResult, function (req, res, next) {
     mongodb().collection(req.params.collection).deleteOne({
       _id: req.params._id
@@ -100,11 +96,12 @@ router.delete('/article/:collection/:_id',
   }
 );
 
-router.get('/upload-info/attachment/:collection', query('isFormData').toBoolean(), validator.path,
+router.get('/upload-info/attachment/:collection', validator.collection,
+  query('isFormData').toBoolean(), validator.path,
   validator.checkResult, function (req, res, next) {
     res.status(200).json({
       upload: storage.getUploadMethod(req.params.collection,
-      req.query.path, req.query.isFormData),
+        req.query.path, req.query.isFormData),
       file: {
         name: path.posix.basename(req.query.path),
         url: storage.getUrl(req.params.collection, req.query.path),
@@ -114,9 +111,10 @@ router.get('/upload-info/attachment/:collection', query('isFormData').toBoolean(
     });
   });
 
-router.get('/attachment/:collection', validator.checkResult, function (req, res, next) {
-  res.redirect(storage.getUrl(req.params.collection, req.query.path));
-});
+router.get('/attachment/:collection', validator.collection, validator.checkResult,
+  function (req, res, next) {
+    res.redirect(storage.getUrl(req.params.collection, req.query.path));
+  });
 
 storage.installRouter(router);
 
