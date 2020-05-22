@@ -58,7 +58,7 @@ paths:
       tags:
         - article
       summary: "Insert article"
-      description: "Insert article. Not override any existing article."
+      description: "Insert article."
       operationId: "postArticle"
       parameters:
         - name: "resolve_attachments"
@@ -78,10 +78,20 @@ paths:
           schema:
             $ref: "#/definitions/Article"
       responses:
+        200:
+          description: "Updated"
+          schema:
+            type: "object"
+            properties:
+              _id:
+                type: "string"
         201:
           description: "Created"
-        204:
-          description: "Updated"
+          schema:
+            type: "object"
+            properties:
+              _id:
+                type: "string"
         400:
           description: "Invalid Input"
         409:
@@ -207,7 +217,7 @@ paths:
               file:
                 type: "object"
                 properties:
-                  name:
+                  filename:
                     type: "string"
                   url:
                     type: "string"

@@ -15,8 +15,13 @@
     "storage": "default",
     "default_storage_options": {
         "uploads_tmpdir":"uploads/",
+        "api_prefix": "http://localhost:3000/api/",
         "url_prefix": "/attachment",
         "directory": "public/attachment",
         "max_file_size": "1GB"
+    },
+    "downloader":{
+        "timeout": 600,
+        "keep_alive": 60
     }
 }

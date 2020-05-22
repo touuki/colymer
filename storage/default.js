@@ -17,28 +17,31 @@ class DefaultStorage {
     return storageConfig.url_prefix + path.posix.join('/', collection, queryPath);
   }
 
-  static getUploadMethod(collection, queryPath, isFormData) {
-    const url = path.posix.join('/api/attachment', collection) + '?' + new URLSearchParams({ path: queryPath });
-    if (isFormData) {
-      return {
-        method: 'POST',
-        url,
-        headers: [{
-          name: "Content-Type",
-          value: "multipart/form-data"
-        }],
-        formField: 'file'
-      };
-    } else {
-      return {
-        method: 'PUT',
-        url,
-        headers: [{
-          name: "Content-Type",
-          value: "application/octet-stream"
-        }]
-      };
-    }
+  static getDirectlyUploadMethod(collection, queryPath) {
+    const url = new URL('attachment/' + collection, storageConfig.api_prefix);
+    url.searchParams.set('path', queryPath);
+    return {
+      method: 'PUT',
+      url: url.href,
+      headers: [{
+        name: "Content-Type",
+        value: "application/octet-stream"
+      }]
+    };
+  }
+
+  static getFormUploadMethod(collection, queryPath) {
+    const url = new URL('attachment/' + collection, storageConfig.api_prefix);
+    url.searchParams.set('path', queryPath);
+    return {
+      method: 'POST',
+      url: url.href,
+      headers: [{
+        name: "Content-Type",
+        value: "multipart/form-data"
+      }],
+      formField: 'file'
+    };
   }
 
   static _moveFile(pathname, originalPath, callback) {
