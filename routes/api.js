@@ -6,6 +6,7 @@ const path = require('path');
 const mime = require('mime-types');
 
 const utils = require('../utils');
+const downloaderUtils = require('../utils/downloader');
 const validator = require('../validator');
 const storage = require('../storage');
 const { db } = require('../utils/mongo');
@@ -36,14 +37,17 @@ router.post('/article/:collection', validator.collection, query('replace').toBoo
       }, function (error, result) {
         if (error) return next(error);
         if (result.lastErrorObject.updatedExisting) {
+          req.body._id = result.value._id;
           res.status(200).json({
             _id: result.value._id
           });
         } else {
+          req.body._id = result.lastErrorObject.upserted;
           res.status(201).json({
             _id: result.lastErrorObject.upserted
           });
         }
+        downloaderUtils.produceDownloadRequests(req.params.collection, req.body, (error) => error && console.error(error));
       });
     } else {
       db().collection(req.params.collection).insertOne(req.body, {
@@ -51,9 +55,11 @@ router.post('/article/:collection', validator.collection, query('replace').toBoo
         checkKeys: true,
       }, function (error, result) {
         if (error) return next(error);
+        req.body._id = result.insertedId;
         res.status(201).json({
           _id: result.insertedId
         });
+        downloaderUtils.produceDownloadRequests(req.params.collection, req.body, (error) => error && console.error(error));
       });
     }
   }
@@ -82,7 +88,9 @@ router.put('/article/:collection/:_id', validator.collection, validator._id, que
     }, function (error, result) {
       if (error) return next(error);
       if (result.matchedCount) {
+        req.body._id = req.params._id;
         res.status(204).send();
+        downloaderUtils.produceDownloadRequests(req.params.collection, req.body, (error) => error && console.error(error));
       } else {
         res.status(404).send();
       }
@@ -108,8 +116,8 @@ router.get('/upload-info/attachment/:collection', validator.collection,
   query('isFormData').toBoolean(), validator.path,
   validator.checkResult, function (req, res, next) {
     res.status(200).json({
-      upload: req.query.isFormData ? storage.getFormUploadMethod(req.params.collection, req.query.path)
-        : storage.getDirectlyUploadMethod(req.params.collection, req.query.path),
+      upload: req.query.isFormData ? storage.getFormUploadInfo(req.params.collection, req.query.path)
+        : storage.getDirectlyUploadInfo(req.params.collection, req.query.path),
       file: utils.attachmentInfo(req.params.collection, req.query.path)
     });
   });

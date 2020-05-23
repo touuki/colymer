@@ -13,8 +13,8 @@
         }
     },
     "storage": "default",
+    "tmp_dir": "tmp/",
     "default_storage_options": {
-        "uploads_tmpdir":"uploads/",
         "api_prefix": "http://localhost:3000/api/",
         "url_prefix": "/attachment",
         "directory": "public/attachment",
@@ -22,6 +22,8 @@
     },
     "downloader":{
         "timeout": 600,
-        "keep_alive": 60
+        "keep_alive": 60,
+        "user_agent": "colymer",
+        "max_redirect_times": 4
     }
 }

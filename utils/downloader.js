@@ -1,6 +1,9 @@
 const { db } = require('./mongo');
-const config = require('../config').downloader;
+const config = require('../config');
+const http = require('http');
+const storage = require('../storage');
 const path = require('path');
+const fs = require('fs');
 
 module.exports = {
   registerNode: function (callback) {
@@ -42,6 +45,47 @@ module.exports = {
     db().collection('#attachment').insertMany(downloadRequests, { checkKeys: true }, callback);
   },
 
+  saveAttachment: function (downloadRequest, callback) {
+    if (!downloadRequest.attachment.path) {
+
+    }
+    const uploadInfo = storage.getDirectlyUploadInfo(downloadRequest.collection, downloadRequest.attachment.path);
+    typeof uploadInfo.options === 'object' || (uploadInfo.options = {});
+
+    const transferAttachment = function (url, referer, redirectTimes, callback) {
+      if (redirectTimes > config.downloader.max_redirect_times) {
+        return callback(new Error('max_redirect_times_reached'));
+      }
+      const headers = {
+        'User-Agent': config.downloader.user_agent || 'colymer',
+      };
+      if (referer) {
+        const refererURL = new URL(referer);
+        headers.Origin = refererURL.origin;
+        headers.Referer = refererURL.href;
+      }
+      http.get(url, {
+        headers: headers
+      }, function (res) {
+        if ([301, 302, 303, 307, 308].includes(res.statusCode) && res.headers.location) {
+          return transferAttachment(res.headers.location, url, ++redirectTimes, callback);
+        }
+        if (typeof res.headers['content-length'] !== undefined) {
+          typeof uploadInfo.options.headers === 'object' || (uploadInfo.options.headers = {});
+          uploadInfo.headers['Content-Length'] = res.headers['content-length'];
+        }
+        const req = http.request(uploadInfo.url, uploadInfo.options, function (resp) {
+
+        });
+        req.on('error', callback);
+
+        res.pipe(req);
+      }).on('error', callback);
+    };
+
+    transferAttachment(downloadRequest.attachment.original_url, downloadRequest.article.original_url, 0, callback);
+  },
+
   acceptDownloadRequest: function (nodeId, callback) {
     db().collection('#attachment').findOneAndUpdate({ accept: { $exists: false } }, { $set: { accept: nodeId } },
       function (error, result) {
@@ -71,7 +115,7 @@ module.exports = {
 
   clearZombieRequestAndNode: function () {
     db().collection('#node').deleteMany({
-      active_time: { $le: Date.now() - config.timeout * 1000 }
+      active_time: { $lt: Date.now() - config.downloader.timeout * 1000 }
     }, function (error) {
       if (error) console.error(error);
       db().collection('#node').find({}, { projection: { _id: 1 } }).toArray(function (error, documents) {

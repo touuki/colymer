@@ -187,33 +187,30 @@ paths:
               upload:
                 type: "object"
                 properties:
-                  method:
-                    type: "string"
-                    enum:
-                      - POST
-                      - PUT
                   url:
                     type: "string"
-                  headers:
-                    type: "array"
-                    items:
-                      type: "object"
-                      properties:
-                        name:
-                          type: "string"
-                        value:
-                          type: "string"
-                  formData:
-                    type: "array"
-                    items:
-                      type: "object"
-                      properties:
-                        name:
-                          type: "string"
-                        value:
-                          type: "string"
-                  formField:
-                    type: "string"
+                  options:
+                    type: "object"
+                    description: "see https://nodejs.org/api/http.html#http_http_request_url_options_callback"
+                    properties:
+                      headers:
+                        type: "object"
+                      method:
+                        type: "string"
+                  form:
+                    type: "object"
+                    properties:
+                      formData:
+                        type: "array"
+                        items:
+                          type: "object"
+                          properties:
+                            name:
+                              type: "string"
+                            value:
+                              type: "string"
+                      formField:
+                        type: "string"
               file:
                 type: "object"
                 properties:

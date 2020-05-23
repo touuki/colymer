@@ -1,6 +1,6 @@
 const path = require('path');
 const { param, query, validationResult } = require('express-validator');
-const { ObjectId } =  require('mongodb');
+const { ObjectId } = require('mongodb');
 
 module.exports = {
   article: require('./article'),
@@ -12,7 +12,9 @@ module.exports = {
       return value;
     }
   }),
-  path: query('path').customSanitizer((value) => path.posix.normalize(value)).custom((value) => !value.startsWith('../')),
+  path: query('path').notEmpty()
+    .customSanitizer((value) => value && path.posix.normalize(value))
+    .custom((value) => !value.startsWith('../')),
   checkResult: function (req, res, next) {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {

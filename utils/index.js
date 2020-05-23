@@ -1,7 +1,7 @@
 const path = require('path');
-const storage = require('../storage');
 const mime = require('mime-types');
 const $ = require('cheerio');
+const storage = require('../storage');
 
 module.exports = {
   resolveAttachments: function (article) {
@@ -31,6 +31,7 @@ module.exports = {
     });
     article.content = $.html(root, { decodeEntities: false });
   },
+
   attachmentInfo: function(collection, queryPath){
     const obj = {
       filename: path.posix.basename(queryPath),

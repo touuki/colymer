@@ -6,6 +6,7 @@
 
 var app = require('../app');
 var http = require('http');
+var config = require('../config');
 
 /**
  * Get port from environment and store in Express.
@@ -20,16 +21,18 @@ app.set('port', port);
 
 var server = http.createServer(app);
 
-require('../utils/mongo').init(function () {  
+require('../utils/mongo').init(function () {
   /**
    * Listen on provided port, on all network interfaces.
    */
-  
+
   server.listen(port);
   server.on('error', onError);
   server.on('listening', onListening);
+  
+  setInterval(require('../utils/downloader').clearZombieRequestAndNode,
+    config.downloader.timeout * 1000);
 });
-
 
 /**
  * Normalize a port into a number, string, or false.

@@ -6,7 +6,7 @@ const os = require('os');
 
 const { header } = require('express-validator');
 const validator = require('../validator');
-const storageConfig = require('../config').default_storage_options;
+const config = require('../config');
 
 class DefaultStorage {
 
@@ -14,33 +14,37 @@ class DefaultStorage {
     if (os.type() == 'Windows_NT') {
       queryPath = queryPath.replace(/[\\:*?"<>|\f\n\r\t\v]/g, '_');
     }
-    return storageConfig.url_prefix + path.posix.join('/', collection, queryPath);
+    return config.default_storage_options.url_prefix + path.posix.join('/', collection, queryPath);
   }
 
-  static getDirectlyUploadMethod(collection, queryPath) {
-    const url = new URL('attachment/' + collection, storageConfig.api_prefix);
+  static getDirectlyUploadInfo(collection, queryPath) {
+    const url = new URL('attachment/' + collection, config.default_storage_options.api_prefix);
     url.searchParams.set('path', queryPath);
     return {
-      method: 'PUT',
       url: url.href,
-      headers: [{
-        name: "Content-Type",
-        value: "application/octet-stream"
-      }]
+      options: {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/octet-stream'
+        }
+      },
     };
   }
 
-  static getFormUploadMethod(collection, queryPath) {
-    const url = new URL('attachment/' + collection, storageConfig.api_prefix);
+  static getFormUploadInfo(collection, queryPath) {
+    const url = new URL('attachment/' + collection, config.default_storage_options.api_prefix);
     url.searchParams.set('path', queryPath);
     return {
-      method: 'POST',
       url: url.href,
-      headers: [{
-        name: "Content-Type",
-        value: "multipart/form-data"
-      }],
-      formField: 'file'
+      options: {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        },
+      },
+      form: {
+        formField: 'file'
+      }
     };
   }
 
@@ -58,19 +62,20 @@ class DefaultStorage {
     if (os.type() == 'Windows_NT') {
       queryPath = queryPath.replace(/[\\:*?"<>|\f\n\r\t\v]/g, '_');
     }
-    return path.join(storageConfig.directory, collection, queryPath);
+    return path.join(config.default_storage_options.directory, collection, queryPath);
   }
 
   static installRouter(router) {
-    const maxFileSize = bytes.parse(storageConfig.max_file_size);
+    const maxFileSize = bytes.parse(config.default_storage_options.max_file_size);
 
     router.post('/attachment/:collection', validator.collection, validator.path,
-      header('content-length').custom((value) => parseInt(value) < maxFileSize),
+      header('content-length').custom((value) => parseInt(value) < maxFileSize).optional(),
       validator.checkResult, multer({
-        dest: storageConfig.uploads_tmpdir,
+        dest: config.tmp_dir,
         limits: {
           files: 1,
-          fields: 0
+          fields: 0,
+          fileSize: maxFileSize
         }
       }).single('file'),
       function (req, res, next) {
@@ -90,23 +95,34 @@ class DefaultStorage {
     );
 
     router.put('/attachment/:collection', validator.collection, validator.path,
-      header('content-length').custom((value) => parseInt(value) < maxFileSize),
+      header('content-length').custom((value) => parseInt(value) < maxFileSize).optional(),
       validator.checkResult, function (req, res, next) {
         const filename = Date.now() + '-' + Math.round(Math.random() * Math.pow(16, 8)).toString(16);
-        const tmpPath = path.join(storageConfig.uploads_tmpdir, filename);
+        const tmpPath = path.join(config.tmp_dir, filename);
         const writeStream = fs.createWriteStream(tmpPath);
         const pathname = DefaultStorage._getPath(req.params.collection, req.query.path);
+        let length = 0;
+
         writeStream.on('error', function (error) {
-          if (error !== 'aborted') {
+          if (error !== 'aborted' && error !== '413 Payload Too Large'
+            && error.code !== 'ERR_STREAM_DESTROYED') {
             next(error);
           }
-          fs.unlink(tmpPath, (error) => error && console.error(error));
+          fs.unlink(tmpPath, (err) => err && console.error(err));
         });
         writeStream.on('finish', function () {
           DefaultStorage._moveFile(pathname, tmpPath, function (err) {
             if (err) return next(err);
             return res.status(201).send();
           });
+        });
+        req.on('data', function (data) {
+          length += data.length;
+          if (length > maxFileSize && !writeStream.destroyed) {
+            res.set('Connection', 'close');
+            res.status(413).send();
+            writeStream.destroy('413 Payload Too Large');
+          }
         });
         req.on('aborted', function () {
           writeStream.destroy('aborted');
