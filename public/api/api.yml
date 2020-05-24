@@ -158,7 +158,7 @@ paths:
           description: "Not Found"
         500:
           description: "Error"
-  /upload-info/attachment/{collection}:
+  /upload-options/attachment/{collection}:
     parameters:
       - $ref: "#/parameters/collection"
     get:
@@ -182,46 +182,17 @@ paths:
         200:
           description: "OK"
           schema:
+            description: "see https://github.com/request/request#requestoptions-callback"
             type: "object"
             properties:
-              upload:
+              url:
+                type: "string"
+              headers:
                 type: "object"
-                properties:
-                  url:
-                    type: "string"
-                  options:
-                    type: "object"
-                    description: "see https://nodejs.org/api/http.html#http_http_request_url_options_callback"
-                    properties:
-                      headers:
-                        type: "object"
-                      method:
-                        type: "string"
-                  form:
-                    type: "object"
-                    properties:
-                      formData:
-                        type: "array"
-                        items:
-                          type: "object"
-                          properties:
-                            name:
-                              type: "string"
-                            value:
-                              type: "string"
-                      formField:
-                        type: "string"
-              file:
+              method:
+                type: "string"
+              formData:
                 type: "object"
-                properties:
-                  filename:
-                    type: "string"
-                  url:
-                    type: "string"
-                  content_type:
-                    type: "string"
-                  path:
-                    type: "string"
         400:
           description: "Invalid Input"
         500:
@@ -342,5 +313,14 @@ definitions:
         example: "http://example.com/attachment.jpg"
       path:
         type: "string"
+        description: "If present, it means the file has already been uploaded."
       metadata:
         type: "object"
+        properties:
+          error:
+            type: "object"
+            description: "Error object when download."
+            readOnly: true
+          save_dir:
+            type: "string"
+            description: "The directory to save the attachment. Dirname of path."

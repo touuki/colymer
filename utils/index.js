@@ -30,18 +30,5 @@ module.exports = {
       }
     });
     article.content = $.html(root, { decodeEntities: false });
-  },
-
-  attachmentInfo: function(collection, queryPath){
-    const obj = {
-      filename: path.posix.basename(queryPath),
-      url: storage.getUrl(collection, queryPath),
-      path: queryPath,
-    };
-    const content_type = mime.lookup(queryPath);
-    if (content_type) {
-      obj.content_type = content_type;
-    }
-    return obj;
   }
 }

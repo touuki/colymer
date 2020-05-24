@@ -112,17 +112,14 @@ router.delete('/article/:collection/:_id', validator.collection, validator._id,
   }
 );
 
-router.get('/upload-info/attachment/:collection', validator.collection,
+router.get('/upload-options/attachment/:collection', validator.collection,
   query('isFormData').toBoolean(), validator.path,
   validator.checkResult, function (req, res, next) {
-    res.status(200).json({
-      upload: req.query.isFormData ? storage.getFormUploadInfo(req.params.collection, req.query.path)
-        : storage.getDirectlyUploadInfo(req.params.collection, req.query.path),
-      file: utils.attachmentInfo(req.params.collection, req.query.path)
-    });
+    res.status(200).json(req.query.isFormData ? storage.getFormUploadOptions(req.params.collection, req.query.path)
+        : storage.getDirectlyUploadOptions(req.params.collection, req.query.path));
   });
 
-router.get('/attachment/:collection', validator.collection, validator.checkResult,
+router.get('/attachment/:collection', validator.collection, validator.path, validator.checkResult,
   function (req, res, next) {
     res.redirect(storage.getUrl(req.params.collection, req.query.path));
   });

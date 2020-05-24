@@ -13,17 +13,22 @@
         }
     },
     "storage": "default",
-    "tmp_dir": "tmp/",
     "default_storage_options": {
+        "tmp_dir": "tmp/",
         "api_prefix": "http://localhost:3000/api/",
         "url_prefix": "/attachment",
         "directory": "public/attachment",
         "max_file_size": "1GB"
     },
     "downloader":{
-        "timeout": 600,
-        "keep_alive": 60,
-        "user_agent": "colymer",
-        "max_redirect_times": 4
+        "timeout": 300,
+        "keep_alive": 15,
+        "download_interval": 0,
+        "parallel_count": 5,
+        "options": {
+            "headers":{
+                "User-Agent": "colymer"
+            }
+        }
     }
 }

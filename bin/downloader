@@ -1,1 +1,53 @@
 #!/usr/bin/env node
+
+const downloadUtils = require('../utils/downloader');
+const config = require('../config').downloader;
+let nodeId;
+
+require('../utils/mongo').init(function (error, db) {
+    if (error) throw error;
+
+    downloadUtils.registerNode(function (error, _nodeId) {
+        if (error) throw error;
+        nodeId = _nodeId;
+        setInterval(() => downloadUtils.nodeKeepAlive(nodeId), config.keep_alive * 1000);
+        for (let i = 0; i < config.parallel_count; i++) {
+            setTimeout(download, 0);
+        }
+    })
+});
+
+process.on('SIGINT', exit);
+process.on('SIGTERM', exit);
+
+function exit() {
+    if (nodeId) {
+        downloadUtils.deregisterNode(nodeId, function (error) {
+            if (error) console.error(error);
+            process.exit();
+        });
+    } else {
+        process.exit();
+    }
+}
+
+function errorAndExit(error){
+    console.error(error);
+    exit();
+}
+
+function download() {
+    downloadUtils.acceptDownloadRequest(nodeId, function (error, downloadRequest) {
+        if (error) return errorAndExit(error);
+        if (!downloadRequest) {
+            return setTimeout(download, 1000);
+        }
+        downloadUtils.saveAttachment(downloadRequest, function (error) {
+            if (error) return errorAndExit(error);
+            downloadUtils.finishDownloadRequest(downloadRequest, function (error) {
+                if (error) return errorAndExit(error);
+                setTimeout(download, config.download_interval * 1000);
+            });
+        })
+    })
+}

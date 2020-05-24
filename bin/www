@@ -21,7 +21,9 @@ app.set('port', port);
 
 var server = http.createServer(app);
 
-require('../utils/mongo').init(function () {
+require('../utils/mongo').init(function (err, db) {
+  if (err) throw err;
+
   /**
    * Listen on provided port, on all network interfaces.
    */

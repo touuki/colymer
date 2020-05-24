@@ -1,9 +1,11 @@
 const { db } = require('./mongo');
-const config = require('../config');
-const http = require('http');
+const config = require('../config').downloader;
 const storage = require('../storage');
 const path = require('path');
 const fs = require('fs');
+const request = require('request');
+const contentDisposition = require('content-disposition');
+const mime = require('mime-types');
 
 module.exports = {
   registerNode: function (callback) {
@@ -28,7 +30,7 @@ module.exports = {
     }
     const downloadRequests = new Array();
     for (const attachment of article.attachments) {
-      if (!attachment.url && attachment.original_url) {
+      if (!attachment.url && !attachment.path && attachment.original_url) {
         downloadRequests.push({
           attachment: attachment,
           article: {
@@ -46,44 +48,84 @@ module.exports = {
   },
 
   saveAttachment: function (downloadRequest, callback) {
-    if (!downloadRequest.attachment.path) {
+    const attachment = downloadRequest.attachment;
 
-    }
-    const uploadInfo = storage.getDirectlyUploadInfo(downloadRequest.collection, downloadRequest.attachment.path);
-    typeof uploadInfo.options === 'object' || (uploadInfo.options = {});
-
-    const transferAttachment = function (url, referer, redirectTimes, callback) {
-      if (redirectTimes > config.downloader.max_redirect_times) {
-        return callback(new Error('max_redirect_times_reached'));
-      }
-      const headers = {
-        'User-Agent': config.downloader.user_agent || 'colymer',
-      };
-      if (referer) {
-        const refererURL = new URL(referer);
-        headers.Origin = refererURL.origin;
-        headers.Referer = refererURL.href;
-      }
-      http.get(url, {
-        headers: headers
-      }, function (res) {
-        if ([301, 302, 303, 307, 308].includes(res.statusCode) && res.headers.location) {
-          return transferAttachment(res.headers.location, url, ++redirectTimes, callback);
-        }
-        if (typeof res.headers['content-length'] !== undefined) {
-          typeof uploadInfo.options.headers === 'object' || (uploadInfo.options.headers = {});
-          uploadInfo.headers['Content-Length'] = res.headers['content-length'];
-        }
-        const req = http.request(uploadInfo.url, uploadInfo.options, function (resp) {
-
-        });
-        req.on('error', callback);
-
-        res.pipe(req);
-      }).on('error', callback);
+    const headers = {
+      'user-agent': 'colymer',
     };
+    if (config.options.headers) {
+      for (const key in config.options.headers) {
+        headers[key.toLowerCase()] = config.options.headers[key];
+      }
+    }
+    if (downloadRequest.article.original_url) {
+      const refererURL = new URL(downloadRequest.article.original_url);
+      headers.origin = refererURL.origin;
+      headers.referer = refererURL.href;
+    }
 
-    transferAttachment(downloadRequest.attachment.original_url, downloadRequest.article.original_url, 0, callback);
+    const options = Object.assign({}, config.options);
+    options.headers = headers;
+    options.url = attachment.original_url
+    const req = request.get(options);
+
+    req.on('error', function(error){
+      downloadRequest.error = error;
+      console.log(`[Warning ${new Date()}] Failed to download ${attachment.original_url}. Error: ${error.message}`);
+      callback()
+    });
+
+    req.on('response', function (res) {
+      if (res.statusCode == 200) {
+        const url = new URL(attachment.original_url);
+
+        if (typeof attachment.filename === 'undefined' && res.headers['content-disposition']) {
+          try {
+            const cd = contentDisposition.parse(res.headers['content-disposition']);
+            if (cd.parameters.filename) {
+              attachment.filename = path.posix.basename(cd.parameters.filename);
+            }
+          } catch (error) { }
+        }
+
+        if (typeof attachment.filename === 'undefined') {
+          attachment.filename = path.posix.basename(url.pathname) || 'index';
+        }
+
+        if (typeof attachment.content_type === 'undefined') {
+          if (res.headers['content-type']) {
+            attachment.content_type = res.headers['content-type'].split(';')[0];
+          } else {
+            const contentType = mime.lookup(url.pathname) || mime.lookup(attachment.filename);
+            if (contentType) {
+              attachment.content_type = contentType;
+            }
+          }
+        }
+
+        let uploadPath;
+        if (attachment.metadata && attachment.metadata.save_dir) {
+          uploadPath = path.posix.join(attachment.metadata.save_dir, attachment.filename);
+        } else {
+          // adapt cgi-bin etc. the url.pathname may be same for different files.
+          uploadPath = path.posix.join(url.hostname, path.posix.dirname(url.pathname), attachment.filename);
+        }
+        const uploadOptions = storage.getDirectlyUploadOptions(downloadRequest.collection, uploadPath);
+
+        req.pipe(request(uploadOptions, function (error, response, body) {
+          if (error) return callback(error);
+          if (response.statusCode >= 200 && response.statusCode < 300) {
+            attachment.path = uploadPath;
+            callback();
+          } else {
+            callback(new Error(`HTTP Code: ${response.statusCode} ${response.statusMessage} Body: ${body}`));
+          }
+        }));
+      } else {
+        req.destroy(new Error(`HTTP Code: ${res.statusCode} ${res.statusMessage}`));
+      }
+    });
+
   },
 
   acceptDownloadRequest: function (nodeId, callback) {
@@ -98,9 +140,12 @@ module.exports = {
     db().collection(downloadRequest.collection).updateOne({ _id: downloadRequest.article._id }, {
       $set: {
         'attachments.$[element].filename': downloadRequest.attachment.filename,
-        'attachments.$[element].url': downloadRequest.attachment.url,
         'attachments.$[element].path': downloadRequest.attachment.path,
         'attachments.$[element].content_type': downloadRequest.attachment.content_type,
+        'attachments.$[element].metadata.error': downloadRequest.error,
+      },
+      $unset: {
+        'attachments.$[element].metadata.save_dir': ''
       }
     }, {
       arrayFilters: [{
@@ -115,7 +160,7 @@ module.exports = {
 
   clearZombieRequestAndNode: function () {
     db().collection('#node').deleteMany({
-      active_time: { $lt: Date.now() - config.downloader.timeout * 1000 }
+      active_time: { $lt: Date.now() - config.timeout * 1000 }
     }, function (error) {
       if (error) console.error(error);
       db().collection('#node').find({}, { projection: { _id: 1 } }).toArray(function (error, documents) {
@@ -123,7 +168,7 @@ module.exports = {
         db().collection('#attachment').updateMany({
           accept: { $exists: true, $nin: documents.map(x => x._id) }
         }, {
-          $unset: { accept: "" }
+          $unset: { accept: '' }
         }, function (error) {
           if (error) console.error(error);
         })

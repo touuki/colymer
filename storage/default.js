@@ -6,44 +6,40 @@ const os = require('os');
 
 const { header } = require('express-validator');
 const validator = require('../validator');
-const config = require('../config');
+const config = require('../config').default_storage_options;
 
 class DefaultStorage {
 
-  static getUrl(collection, queryPath) {
+  static getUrl(collection, uploadPath) {
     if (os.type() == 'Windows_NT') {
-      queryPath = queryPath.replace(/[\\:*?"<>|\f\n\r\t\v]/g, '_');
+      uploadPath = uploadPath.replace(/[\\:*?"<>|\f\n\r\t\v]/g, '_');
     }
-    return config.default_storage_options.url_prefix + path.posix.join('/', collection, queryPath);
+    return config.url_prefix + path.posix.join('/', collection, uploadPath);
   }
 
-  static getDirectlyUploadInfo(collection, queryPath) {
-    const url = new URL('attachment/' + collection, config.default_storage_options.api_prefix);
-    url.searchParams.set('path', queryPath);
+  static getDirectlyUploadOptions(collection, uploadPath) {
+    const url = new URL('attachment/' + collection, config.api_prefix);
+    url.searchParams.set('path', uploadPath);
     return {
       url: url.href,
-      options: {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/octet-stream'
-        }
-      },
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/octet-stream'
+      }
     };
   }
 
-  static getFormUploadInfo(collection, queryPath) {
-    const url = new URL('attachment/' + collection, config.default_storage_options.api_prefix);
-    url.searchParams.set('path', queryPath);
+  static getFormUploadOptions(collection, uploadPath) {
+    const url = new URL('attachment/' + collection, config.api_prefix);
+    url.searchParams.set('path', uploadPath);
     return {
       url: url.href,
-      options: {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        },
+      method: 'POST',
+      headers: {
+        'Content-Type': 'multipart/form-data'
       },
-      form: {
-        formField: 'file'
+      formData: {
+        file: '$fileData'
       }
     };
   }
@@ -58,15 +54,15 @@ class DefaultStorage {
     });
   }
 
-  static _getPath(collection, queryPath) {
+  static _getPath(collection, uploadPath) {
     if (os.type() == 'Windows_NT') {
-      queryPath = queryPath.replace(/[\\:*?"<>|\f\n\r\t\v]/g, '_');
+      uploadPath = uploadPath.replace(/[\\:*?"<>|\f\n\r\t\v]/g, '_');
     }
-    return path.join(config.default_storage_options.directory, collection, queryPath);
+    return path.join(config.directory, collection, uploadPath);
   }
 
   static installRouter(router) {
-    const maxFileSize = bytes.parse(config.default_storage_options.max_file_size);
+    const maxFileSize = bytes.parse(config.max_file_size);
 
     router.post('/attachment/:collection', validator.collection, validator.path,
       header('content-length').custom((value) => parseInt(value) < maxFileSize).optional(),
@@ -104,8 +100,7 @@ class DefaultStorage {
         let length = 0;
 
         writeStream.on('error', function (error) {
-          if (error !== 'aborted' && error !== '413 Payload Too Large'
-            && error.code !== 'ERR_STREAM_DESTROYED') {
+          if (error !== 'aborted' && error !== '413 Payload Too Large') {
             next(error);
           }
           fs.unlink(tmpPath, (err) => err && console.error(err));
@@ -116,18 +111,21 @@ class DefaultStorage {
             return res.status(201).send();
           });
         });
-        req.on('data', function (data) {
+        req.pipe(writeStream);
+
+        const onData = function (data) {
           length += data.length;
-          if (length > maxFileSize && !writeStream.destroyed) {
+          if (length > maxFileSize) {
             res.set('Connection', 'close');
             res.status(413).send();
+            req.removeListener('data', onData);
             writeStream.destroy('413 Payload Too Large');
           }
-        });
+        };
+        req.on('data', onData);
         req.on('aborted', function () {
           writeStream.destroy('aborted');
         });
-        req.pipe(writeStream);
       }
     );
   }

@@ -1,4 +1,5 @@
 const { checkSchema } = require('express-validator');
+const path = require('path');
 
 module.exports = checkSchema({
   id: {
@@ -65,6 +66,9 @@ module.exports = checkSchema({
   'attachments.*.filename': {
     in: 'body',
     isString: true,
+    customSanitizer: {
+      options: (value) => value && path.posix.basename(value),
+    },
     optional: true,
   },
   'attachments.*.url': {
@@ -84,7 +88,13 @@ module.exports = checkSchema({
   },
   'attachments.*.path': {
     in: 'body',
-    isString: true,
+    notEmpty: true,
+    customSanitizer: {
+      options: (value) => value && path.posix.normalize(value),
+    },
+    custom: {
+      options: (value) => !value.startsWith('../')
+    },
     optional: true,
   },
   'attachments.*.metadata': {
@@ -94,6 +104,17 @@ module.exports = checkSchema({
     },
     custom: {
       options: (value) => typeof value === 'object',
+    },
+    optional: true,
+  },
+  'attachments.*.metadata.save_dir': {
+    in: 'body',
+    notEmpty: true,
+    customSanitizer: {
+      options: (value) => value && path.posix.normalize(value),
+    },
+    custom: {
+      options: (value) => !value.startsWith('../')
     },
     optional: true,
   },
