@@ -4,14 +4,15 @@ const { ObjectId } = require('mongodb');
 
 module.exports = {
   article: require('./article'),
+  download: require('./download'),
   collection: param('collection').notEmpty().matches(/^[a-zA-Z0-9][a-zA-Z0-9\-_]*$/),
   _id: param('_id').customSanitizer((value) => {
     try {
       return new ObjectId(value);
-    } catch (error) {
+    } catch (e) {
       return value;
     }
-  }),
+  }).custom((value) => value instanceof ObjectId),
   path: query('path').notEmpty()
     .customSanitizer((value) => value && path.posix.normalize(value))
     .custom((value) => !value.startsWith('../')),

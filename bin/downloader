@@ -1,53 +1,201 @@
 #!/usr/bin/env node
 
-const downloadUtils = require('../utils/downloader');
+const path = require('path');
+const request = require('request');
+const contentDisposition = require('content-disposition');
+const mime = require('mime-types');
+const fetch = require('node-fetch');
+
 const config = require('../config').downloader;
+const storage = require('../storage');
 let nodeId;
 
-require('../utils/mongo').init(function (error, db) {
+const sleep = function (time = 0) {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      resolve();
+    }, time);
+  })
+};
+
+require('../mongo').init(async function (error, db) {
+  try {
     if (error) throw error;
 
-    downloadUtils.registerNode(function (error, _nodeId) {
-        if (error) throw error;
-        nodeId = _nodeId;
-        setInterval(() => downloadUtils.nodeKeepAlive(nodeId), config.keep_alive * 1000);
-        for (let i = 0; i < config.parallel_count; i++) {
-            setTimeout(download, 0);
-        }
-    })
+    const url = new URL('download/', config.api_prefix);
+    const method = 'POST';
+    const response = await fetch(url, { method });
+    if (!response.ok) throw new Error(`${method} ${url} unexpected response ${response.status} ${response.statusText} ${await response.text()}`);
+    const body = await response.json();
+    nodeId = body._id;
+    if (!nodeId) throw new Error('No nodeId is returned');
+
+    setInterval(async () => {
+      try {
+        const url = new URL(`download/${nodeId}`, config.api_prefix);
+        const method = 'PUT';
+        const response = await fetch(url, { method });
+        if (!response.ok) throw new Error(`${method} ${url} unexpected response ${response.status} ${response.statusText} ${await response.text()}`);
+      } catch (error) {
+        console.error(error);
+      }
+    }, config.keep_alive * 1000);
+
+    for (let i = 0; i < config.parallel_count; i++) {
+      setTimeout(download, 0)
+    }
+  } catch (error) {
+    console.error(error);
+    exit();
+  }
 });
 
 process.on('SIGINT', exit);
 process.on('SIGTERM', exit);
 
 function exit() {
-    if (nodeId) {
-        downloadUtils.deregisterNode(nodeId, function (error) {
-            if (error) console.error(error);
-            process.exit();
-        });
-    } else {
+  if (nodeId) {
+    const url = new URL(`download/${nodeId}`, config.api_prefix);
+    const method = 'DELETE';
+    fetch(url, { method })
+      .then((response) => {
+        if (!response.ok) console.error(new Error(`${method} ${url} unexpected response ${response.status} ${response.statusText}`));
         process.exit();
-    }
+      })
+      .catch((error) => {
+        console.error(error);
+        process.exit();
+      });
+  } else {
+    process.exit();
+  }
 }
 
-function errorAndExit(error){
+async function download() {
+  try {
+    let data = await accept();
+    while (data) {
+      await finish(await transfer(data));
+      await sleep(config.download_interval * 1000);
+      data = await accept();
+    }
+    setTimeout(download, 10000)
+  } catch (error) {
     console.error(error);
     exit();
+  }
 }
 
-function download() {
-    downloadUtils.acceptDownloadRequest(nodeId, function (error, downloadRequest) {
-        if (error) return errorAndExit(error);
-        if (!downloadRequest) {
-            return setTimeout(download, 1000);
+async function accept() {
+  const url = new URL(`download/${nodeId}/accept`, config.api_prefix);
+  const method = 'POST';
+  const response = await fetch(url, { method });
+  if (!response.ok) {
+    if (response.status == 404) {
+      return null;
+    } else {
+      throw new Error(`${method} ${url} unexpected response ${response.status} ${response.statusText} ${await response.text()}`);
+    }
+  }
+  return await response.json();
+}
+
+async function transfer(data) {
+  return new Promise((resolve, reject) => {
+    const attachment = data.attachment;
+
+    const headers = {
+      'user-agent': 'colymer',
+    };
+    if (config.options.headers) {
+      for (const key in config.options.headers) {
+        headers[key.toLowerCase()] = config.options.headers[key];
+      }
+    }
+    if (data.referer) {
+      headers.referer = data.referer;
+    }
+
+    const options = Object.assign({}, config.options);
+    options.headers = headers;
+    options.url = attachment.original_url
+    const req = request.get(options);
+
+    req.on('error', reject);
+
+    req.on('response', function (res) {
+      try {
+
+        if (res.statusCode == 200) {
+          const url = new URL(attachment.original_url);
+
+          if (typeof attachment.filename === 'undefined' && res.headers['content-disposition']) {
+            try {
+              const cd = contentDisposition.parse(res.headers['content-disposition']);
+              if (cd.parameters.filename) {
+                attachment.filename = path.posix.basename(cd.parameters.filename);
+              }
+            } catch (error) { }
+          }
+
+          if (typeof attachment.filename === 'undefined') {
+            attachment.filename = path.posix.basename(url.pathname) || 'index';
+          }
+
+          if (typeof attachment.content_type === 'undefined') {
+            if (res.headers['content-type'] && res.headers['content-type'] != 'application/octet-stream') {
+              attachment.content_type = res.headers['content-type'].split(';')[0];
+            } else {
+              const contentType = mime.lookup(url.pathname) || mime.lookup(attachment.filename);
+              if (contentType) {
+                attachment.content_type = contentType;
+              }
+            }
+          }
+
+          // adapt cgi-bin etc. the url.pathname may be same for different files.
+          const uploadPath = path.posix.join(url.hostname, path.posix.dirname(url.pathname), attachment.filename);
+          const uploadOptions = storage.getDirectlyUploadOptions(data.collection, uploadPath);
+
+          req.pipe(request(uploadOptions, function (error, response, body) {
+            if (error) return reject(error);
+            if (response.statusCode >= 200 && response.statusCode < 300) {
+              resolve({
+                _id: data._id,
+                filename: data.attachment.filename,
+                original_url: data.attachment.original_url,
+                path: uploadPath,
+                content_type: data.attachment.content_type,
+                collection: data.collection
+              })
+            } else {
+              reject(new Error(`HTTP Code: ${response.statusCode} ${response.statusMessage} Body: ${body}`));
+            }
+          }));
+        } else {
+          req.destroy(new Error(`HTTP Code: ${res.statusCode} ${res.statusMessage}`));
         }
-        downloadUtils.saveAttachment(downloadRequest, function (error) {
-            if (error) return errorAndExit(error);
-            downloadUtils.finishDownloadRequest(downloadRequest, function (error) {
-                if (error) return errorAndExit(error);
-                setTimeout(download, config.download_interval * 1000);
-            });
-        })
-    })
+      } catch (error) {
+        reject(error)
+      }
+    });
+  });
+}
+
+async function finish(data) {
+
+  const url = new URL(`download/${nodeId}/finish`, config.api_prefix);
+  const method = 'POST';
+  const response = await fetch(url, {
+    method,
+    body: JSON.stringify(data),
+    headers: { 'Content-Type': 'application/json' }
+  });
+  if (!response.ok) {
+    if (response.status == 404) {
+      console.error(new Error(`${method} ${url} unexpected response ${response.status} ${response.statusText} ${await response.text()}`))
+    } else {
+      throw new Error(`${method} ${url} unexpected response ${response.status} ${response.statusText} ${await response.text()}`);
+    }
+  }
 }

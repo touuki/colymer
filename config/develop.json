@@ -20,14 +20,15 @@
         "directory": "public/attachment",
         "max_file_size": "1GB"
     },
+    "downloader_timeout": 300,
     "downloader":{
-        "timeout": 300,
+        "api_prefix": "http://localhost:3000/api/",
         "keep_alive": 15,
         "download_interval": 0,
-        "parallel_count": 5,
+        "parallel_count": 2,
         "options": {
             "headers":{
-                "User-Agent": "colymer"
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36"
             }
         }
     }

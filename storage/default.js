@@ -64,7 +64,7 @@ class DefaultStorage {
   static installRouter(router) {
     const maxFileSize = bytes.parse(config.max_file_size);
 
-    router.post('/attachment/:collection', validator.collection, validator.path,
+    router.post('/:collection', validator.collection, validator.path,
       header('content-length').custom((value) => parseInt(value) < maxFileSize).optional(),
       validator.checkResult, multer({
         dest: config.tmp_dir,
@@ -90,7 +90,7 @@ class DefaultStorage {
       }
     );
 
-    router.put('/attachment/:collection', validator.collection, validator.path,
+    router.put('/:collection', validator.collection, validator.path,
       header('content-length').custom((value) => parseInt(value) < maxFileSize).optional(),
       validator.checkResult, function (req, res, next) {
         const filename = Date.now() + '-' + Math.round(Math.random() * Math.pow(16, 8)).toString(16);

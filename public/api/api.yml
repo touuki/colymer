@@ -158,7 +158,7 @@ paths:
           description: "Not Found"
         500:
           description: "Error"
-  /upload-options/attachment/{collection}:
+  /attachment/upload_options/{collection}:
     parameters:
       - $ref: "#/parameters/collection"
     get:
@@ -314,13 +314,3 @@ definitions:
       path:
         type: "string"
         description: "If present, it means the file has already been uploaded."
-      metadata:
-        type: "object"
-        properties:
-          error:
-            type: "object"
-            description: "Error object when download."
-            readOnly: true
-          save_dir:
-            type: "string"
-            description: "The directory to save the attachment. Dirname of path."

@@ -89,6 +89,7 @@ module.exports = checkSchema({
   'attachments.*.path': {
     in: 'body',
     notEmpty: true,
+    isString: true,
     customSanitizer: {
       options: (value) => value && path.posix.normalize(value),
     },
@@ -104,17 +105,6 @@ module.exports = checkSchema({
     },
     custom: {
       options: (value) => typeof value === 'object',
-    },
-    optional: true,
-  },
-  'attachments.*.metadata.save_dir': {
-    in: 'body',
-    notEmpty: true,
-    customSanitizer: {
-      options: (value) => value && path.posix.normalize(value),
-    },
-    custom: {
-      options: (value) => !value.startsWith('../')
     },
     optional: true,
   },
