@@ -37,12 +37,15 @@ paths:
       description: "Query articles"
       operationId: "queryArticles"
       parameters:
-        - name: "query object"
-          in: "body"
-          description: "Query object"
+        - name: "pipeline"
+          in: "query"
+          description: "Aggregation Pipeline"
           required: true
-          schema:
-            type: "object"
+          type: "string"
+        - name: "collation"
+          in: "query"
+          description: "Collation allows users to specify language-specific rules for string comparison."
+          type: "string"
       responses:
         200:
           description: "OK"
@@ -70,7 +73,7 @@ paths:
           in: "query"
           description: "Whether to replace an article with the same id and version already exists."
           type: "boolean"
-          default: "false"
+          default: false
         - name: "article"
           in: "body"
           description: "Article object"
@@ -94,8 +97,6 @@ paths:
                 type: "string"
         400:
           description: "Invalid Input"
-        409:
-          description: "Conflict"
         500:
           description: "Error"
   /article/{collection}/{_id}:
@@ -126,21 +127,18 @@ paths:
       description: "Update article."
       operationId: "putArticle"
       parameters:
-        - name: "resolve_attachments"
-          in: "query"
-          description: "Whether to process attachments automaticly for HTML content."
-          type: "boolean"
-          default: false
-        - name: "article"
+        - name: "UpdateOperations"
           in: "body"
-          description: "Article object"
+          description: "The update operations to be applied"
           schema:
-            $ref: "#/definitions/Article"
+            type: "object"
       responses:
         204:
           description: "Updated"
         400:
           description: "Invalid Input"
+        404:
+          description: "Not Found"
         500:
           description: "Error"
     delete:
@@ -314,3 +312,10 @@ definitions:
       path:
         type: "string"
         description: "If present, it means the file has already been uploaded."
+      metadata:
+        type: "object"
+        properties:
+          height:
+            type: "number"
+          width:
+            type: "number"

@@ -56,6 +56,35 @@ function resolveAttachments(article) {
   article.content = $.html(root, { decodeEntities: false });
 }
 
+router.get('/:collection', validator.collection,
+  query('pipeline').customSanitizer((value) => {
+    try {
+      return JSON.parse(value)
+    } catch (error) {
+      return value
+    }
+  }).custom((value) => typeof value === 'object'),
+  query('collation').customSanitizer((value) => {
+    try {
+      return JSON.parse(value)
+    } catch (error) {
+      return value
+    }
+  }), validator.checkResult,
+  function (req, res, next) {
+    db().collection(req.params.collection).aggregate(req.query.pipeline, {
+      maxTimeMS: 30000,
+      collation: req.query.collation
+    }, function (error, cursor) {
+      if (error) return next(error);
+      cursor.toArray(function (error, data) {
+        if (error) return next(error);
+        res.status(200).json(data);
+      })
+    })
+  }
+);
+
 router.post('/:collection', validator.collection, query('replace').toBoolean(),
   query('resolve_attachments').toBoolean(), validator.article, validator.checkResult,
   function (req, res, next) {
@@ -114,21 +143,15 @@ router.get('/:collection/:_id', validator.collection, validator._id,
   }
 );
 
-router.put('/:collection/:_id', validator.collection, validator._id, query('resolve_attachments').toBoolean(),
-  validator.article, validator.checkResult, function (req, res, next) {
-    const body = matchedData(req, { locations: ['body'] });
-    if (req.query.resolve_attachments) {
-      resolveAttachments(body);
-    }
-    db().collection(req.params.collection).replaceOne({ _id: req.params._id }, body, {
+router.put('/:collection/:_id', validator.collection, validator._id,
+  validator.checkResult, function (req, res, next) {
+    db().collection(req.params.collection).updateOne({ _id: req.params._id }, req.body, {
       ignoreUndefined: true,
       checkKeys: true,
     }, function (error, result) {
       if (error) return next(error);
       if (result.matchedCount) {
-        body._id = req.params._id;
         res.status(204).send();
-        produceDownloadRequests(req.params.collection, body, (error) => error && console.error(error));
       } else {
         res.status(404).send();
       }

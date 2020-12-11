@@ -2,3 +2,6 @@ node_modules/
 package-lock.json
 /public/attachment/
 /uploads/
+__pycache__
+*.cookie
+.vscode

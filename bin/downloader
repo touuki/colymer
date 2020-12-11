@@ -5,10 +5,27 @@ const request = require('request');
 const contentDisposition = require('content-disposition');
 const mime = require('mime-types');
 const fetch = require('node-fetch');
+const http = require('http');
+const https = require('https');
 
 const config = require('../config').downloader;
 const storage = require('../storage');
 let nodeId;
+
+const httpAgent = new http.Agent({
+	keepAlive: true
+});
+const httpsAgent = new https.Agent({
+	keepAlive: true
+});
+
+const agent = function(_parsedURL) {
+  if (_parsedURL.protocol == 'http:') {
+    return httpAgent;
+  } else {
+    return httpsAgent;
+  }
+}
 
 const sleep = function (time = 0) {
   return new Promise((resolve, reject) => {
@@ -24,7 +41,7 @@ require('../mongo').init(async function (error, db) {
 
     const url = new URL('download/', config.api_prefix);
     const method = 'POST';
-    const response = await fetch(url, { method });
+    const response = await fetch(url, { method, agent });
     if (!response.ok) throw new Error(`${method} ${url} unexpected response ${response.status} ${response.statusText} ${await response.text()}`);
     const body = await response.json();
     nodeId = body._id;
@@ -34,7 +51,7 @@ require('../mongo').init(async function (error, db) {
       try {
         const url = new URL(`download/${nodeId}`, config.api_prefix);
         const method = 'PUT';
-        const response = await fetch(url, { method });
+        const response = await fetch(url, { method, agent });
         if (!response.ok) throw new Error(`${method} ${url} unexpected response ${response.status} ${response.statusText} ${await response.text()}`);
       } catch (error) {
         console.error(error);
@@ -57,7 +74,7 @@ function exit() {
   if (nodeId) {
     const url = new URL(`download/${nodeId}`, config.api_prefix);
     const method = 'DELETE';
-    fetch(url, { method })
+    fetch(url, { method, agent })
       .then((response) => {
         if (!response.ok) console.error(new Error(`${method} ${url} unexpected response ${response.status} ${response.statusText}`));
         process.exit();
@@ -89,7 +106,7 @@ async function download() {
 async function accept() {
   const url = new URL(`download/${nodeId}/accept`, config.api_prefix);
   const method = 'POST';
-  const response = await fetch(url, { method });
+  const response = await fetch(url, { method, agent });
   if (!response.ok) {
     if (response.status == 404) {
       return null;
@@ -187,7 +204,7 @@ async function finish(data) {
   const url = new URL(`download/${nodeId}/finish`, config.api_prefix);
   const method = 'POST';
   const response = await fetch(url, {
-    method,
+    method, agent,
     body: JSON.stringify(data),
     headers: { 'Content-Type': 'application/json' }
   });
