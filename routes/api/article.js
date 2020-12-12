@@ -146,8 +146,7 @@ router.get('/:collection/:_id', validator.collection, validator._id,
 router.put('/:collection/:_id', validator.collection, validator._id,
   validator.checkResult, function (req, res, next) {
     db().collection(req.params.collection).updateOne({ _id: req.params._id }, req.body, {
-      ignoreUndefined: true,
-      checkKeys: true,
+      ignoreUndefined: true
     }, function (error, result) {
       if (error) return next(error);
       if (result.matchedCount) {

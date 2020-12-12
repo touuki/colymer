@@ -4,7 +4,7 @@ from datetime import datetime
 import time
 import os
 
-request_interval = 30
+request_interval = 60
 user_ids = ['39817910000']
 collection = 'instagram'
 cookie_file = os.path.join(os.path.dirname(__file__), 'instagram.cookie')
@@ -13,11 +13,12 @@ instagram = sites.Instagram(
         'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36'
     },
     proxies={
-        'http': 'http://localhost:7070',
-        'https': 'http://localhost:7070',
+        'http': 'http://localhost:17070',
+        'https': 'http://localhost:17070',
     }
 )
 colymer = sites.Colymer('http://localhost:3000/api/')
+
 
 def owner_to_timeline_media(user_id, cursor=None, min_id=None, max_id=None):
     data = instagram.owner_to_timeline_media(user_id, after=cursor)
@@ -90,9 +91,6 @@ def owner_to_timeline_media(user_id, cursor=None, min_id=None, max_id=None):
 if os.path.exists(cookie_file):
     instagram.load_cookies(cookie_file)
 
-print(instagram.session.cookies.get_dict())
-exit()
-
 try:
     for user_id in user_ids:
         data = colymer.get_articles(collection, [
@@ -158,7 +156,5 @@ try:
             if result['_ids']:
                 colymer.put_article(
                     collection, result['_ids'][-1], {'$set': {'metadata.bottom': True}})
-
-
 finally:
     instagram.save_cookies(cookie_file)

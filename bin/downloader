@@ -96,7 +96,7 @@ async function download() {
       await sleep(config.download_interval * 1000);
       data = await accept();
     }
-    setTimeout(download, 10000)
+    setTimeout(download, config.check_interval * 1000)
   } catch (error) {
     console.error(error);
     exit();
