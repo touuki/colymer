@@ -92,11 +92,24 @@ router.post('/:collection', validator.collection, query('replace').toBoolean(),
     if (req.query.resolve_attachments) {
       resolveAttachments(body);
     }
-    if (req.query.replace && typeof body.id !== 'undefined') {
+    if (typeof body.id === 'undefined') {
+      db().collection(req.params.collection).insertOne(body, {
+        ignoreUndefined: true,
+        checkKeys: true,
+      }, function (error, result) {
+        if (error) return next(error);
+        body._id = result.insertedId;
+        res.status(201).json({
+          _id: result.insertedId
+        });
+        produceDownloadRequests(req.params.collection, body, (error) => error && console.error(error));
+      });
+    } else if (req.query.replace) {
       db().collection(req.params.collection).findOneAndReplace({
         id: body.id,
         version: typeof body.version === 'undefined' ? { $exists: false } : body.version,
       }, body, {
+        projection: { _id: 1 },
         upsert: true,
         ignoreUndefined: true,
         checkKeys: true,
@@ -116,16 +129,27 @@ router.post('/:collection', validator.collection, query('replace').toBoolean(),
         produceDownloadRequests(req.params.collection, body, (error) => error && console.error(error));
       });
     } else {
-      db().collection(req.params.collection).insertOne(body, {
+      db().collection(req.params.collection).findOneAndUpdate({
+        id: body.id,
+        version: typeof body.version === 'undefined' ? { $exists: false } : body.version,
+      }, { $setOnInsert: body }, {
+        projection: { _id: 1 },
+        upsert: true,
         ignoreUndefined: true,
         checkKeys: true,
       }, function (error, result) {
         if (error) return next(error);
-        body._id = result.insertedId;
-        res.status(201).json({
-          _id: result.insertedId
-        });
-        produceDownloadRequests(req.params.collection, body, (error) => error && console.error(error));
+        if (result.lastErrorObject.updatedExisting) {
+          res.status(200).json({
+            _id: result.value._id
+          });
+        } else {
+          body._id = result.lastErrorObject.upserted;
+          res.status(201).json({
+            _id: result.lastErrorObject.upserted
+          });
+          produceDownloadRequests(req.params.collection, body, (error) => error && console.error(error));
+        }
       });
     }
   }

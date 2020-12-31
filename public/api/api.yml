@@ -82,7 +82,7 @@ paths:
             $ref: "#/definitions/Article"
       responses:
         200:
-          description: "Updated"
+          description: "Replaced (for replace=true) or already exist (for replace=false)"
           schema:
             type: "object"
             properties:
