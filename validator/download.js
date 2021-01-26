@@ -2,8 +2,41 @@ const { checkSchema } = require('express-validator');
 const path = require('path');
 const { ObjectId } = require('mongodb');
 
+module.exports.error = checkSchema({
+  _id: {
+    in: 'body',
+    customSanitizer: {
+      options: (value) => {
+        try {
+          return new ObjectId(value);
+        } catch (e) {
+          return value;
+        }
+      },
+    },
+    custom: {
+      options: (value) => value instanceof ObjectId
+    }
+  }
+});
+
 module.exports.finish = checkSchema({
   _id: {
+    in: 'body',
+    customSanitizer: {
+      options: (value) => {
+        try {
+          return new ObjectId(value);
+        } catch (e) {
+          return value;
+        }
+      },
+    },
+    custom: {
+      options: (value) => value instanceof ObjectId
+    }
+  },
+  article_id: {
     in: 'body',
     customSanitizer: {
       options: (value) => {

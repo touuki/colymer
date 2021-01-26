@@ -1,8 +1,6 @@
 const express = require('express');
 const router = express.Router();
 
-const { query } = require('express-validator');
-
 const validator = require('../../validator');
 const { db } = require('../../mongo');
 
@@ -49,7 +47,7 @@ router.post('/:_id/accept', validator._id, validator.checkResult, function (req,
     });
 });
 
-router.post('/:_id/error', validator._id, validator.checkResult, function (req, res, next) {
+router.post('/:_id/error', validator._id, validator.download.error, validator.checkResult, function (req, res, next) {
   db().collection('#attachment').updateOne({ _id: req.body._id, accept: req.params._id },
     {
       $set: { error: req.body.error },

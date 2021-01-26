@@ -109,6 +109,11 @@ paths:
       summary: "Get article"
       description: "Get article"
       operationId: "getArticle"
+      parameters:
+        - name: "projection"
+          in: "query"
+          description: "The fields to return in the query."
+          type: "string"
       responses:
         200:
           description: "OK"

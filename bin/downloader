@@ -182,6 +182,7 @@ async function transfer(data) {
             if (response.statusCode >= 200 && response.statusCode < 300) {
               resolve({
                 _id: data._id,
+                article_id: data.article_id,
                 filename: data.attachment.filename,
                 original_url: data.attachment.original_url,
                 path: uploadPath,

@@ -85,9 +85,10 @@ router.get('/:collection', validator.collection,
   }
 );
 
-router.post('/:collection', validator.collection, query('replace').toBoolean(),
-  query('resolve_attachments').toBoolean(), validator.article, validator.checkResult,
-  function (req, res, next) {
+router.post('/:collection', validator.collection,
+  query('replace').customSanitizer(value => value == 1 || value && value.toLowerCase() == 'true'),
+  query('resolve_attachments').customSanitizer(value => value == 1 || value && value.toLowerCase() == 'true'),
+  validator.article, validator.checkResult, function (req, res, next) {
     const body = matchedData(req, { locations: ['body'] });
     if (req.query.resolve_attachments) {
       resolveAttachments(body);
@@ -156,14 +157,21 @@ router.post('/:collection', validator.collection, query('replace').toBoolean(),
 );
 
 router.get('/:collection/:_id', validator.collection, validator._id,
-  validator.checkResult, function (req, res, next) {
-    db().collection(req.params.collection).findOne({ _id: req.params._id }, function (error, result) {
-      if (error) return next(error);
-      if (result)
-        res.status(200).json(result);
-      else
-        res.status(404).send();
-    });
+  query('projection').customSanitizer((value) => {
+    try {
+      return JSON.parse(value)
+    } catch (error) {
+      return value
+    }
+  }), validator.checkResult, function (req, res, next) {
+    db().collection(req.params.collection).findOne({ _id: req.params._id }, { projection: req.query.projection },
+      function (error, result) {
+        if (error) return next(error);
+        if (result)
+          res.status(200).json(result);
+        else
+          res.status(404).send();
+      });
   }
 );
 
