@@ -13,9 +13,9 @@ module.exports = {
       return value;
     }
   }).custom((value) => value instanceof ObjectId),
-  path: query('path').notEmpty()
-    .customSanitizer((value) => value && path.posix.normalize(value))
-    .custom((value) => !value.startsWith('../')),
+  path: query('path').customSanitizer((value) => value && path.posix.normalize(value)).notEmpty()
+    .custom((value) => !value.startsWith('../') && !/[\\:*?"<>|\f\n\r\t\v]/.test(value)),
+  overwrite: query('overwrite').customSanitizer(value => value == 1 || value && value.toLowerCase() == 'true'),
   checkResult: function (req, res, next) {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {

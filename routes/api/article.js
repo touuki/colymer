@@ -2,59 +2,9 @@ const express = require('express');
 const router = express.Router();
 
 const { query, matchedData } = require('express-validator');
-const $ = require('cheerio');
 
 const validator = require('../../validator');
 const { db } = require('../../mongo');
-
-function produceDownloadRequests(collection, article, callback) {
-  if (!article.attachments) {
-    return callback(null);
-  }
-  const downloadRequests = new Array();
-  for (const attachment of article.attachments) {
-    if (!attachment.url && !attachment.path && attachment.original_url) {
-      downloadRequests.push({
-        attachment: attachment,
-        article_id: article._id,
-        referer: article.original_url,
-        collection: collection,
-      });
-    }
-  }
-  if (downloadRequests.length == 0) {
-    return callback(null);
-  }
-  db().collection('#attachment').insertMany(downloadRequests, { checkKeys: true, ignoreUndefined: true }, callback);
-}
-
-function resolveAttachments(article) {
-  if (!article.content_type.startsWith('text/html')) {
-    return article;
-  }
-  if (!article.attachments) {
-    article.attachments = new Array();
-  }
-  const root = $(article.content);
-  $('img,embed,object,video,audio,source', root).each((i, e) => {
-    const element = $(e, root);
-    const src = element.attr('data-src') || element.attr('src')
-    if (src && !(src.startsWith('data:') || src.startsWith('cid:'))) {
-      const id = Math.round(Math.random() * Math.pow(16, 10)).toString(16);
-      article.attachments.push({
-        id: id,
-        original_url: src,
-        content_type: element.attr('type'),
-        metadata: {
-          width: element.attr('width'),
-          height: element.attr('height')
-        }
-      });
-      element.attr('src', 'cid:' + id);
-    }
-  });
-  article.content = $.html(root, { decodeEntities: false });
-}
 
 router.get('/:collection', validator.collection,
   query('pipeline').customSanitizer((value) => {
@@ -70,7 +20,7 @@ router.get('/:collection', validator.collection,
     } catch (error) {
       return value
     }
-  }), validator.checkResult,
+  }).custom((value) => typeof value === 'object').not().isArray(), validator.checkResult,
   function (req, res, next) {
     db().collection(req.params.collection).aggregate(req.query.pipeline, {
       maxTimeMS: 30000,
@@ -85,14 +35,9 @@ router.get('/:collection', validator.collection,
   }
 );
 
-router.post('/:collection', validator.collection,
-  query('replace').customSanitizer(value => value == 1 || value && value.toLowerCase() == 'true'),
-  query('resolve_attachments').customSanitizer(value => value == 1 || value && value.toLowerCase() == 'true'),
+router.post('/:collection', validator.collection, validator.overwrite,
   validator.article, validator.checkResult, function (req, res, next) {
     const body = matchedData(req, { locations: ['body'] });
-    if (req.query.resolve_attachments) {
-      resolveAttachments(body);
-    }
     if (typeof body.id === 'undefined') {
       db().collection(req.params.collection).insertOne(body, {
         ignoreUndefined: true,
@@ -103,9 +48,8 @@ router.post('/:collection', validator.collection,
         res.status(201).json({
           _id: result.insertedId
         });
-        produceDownloadRequests(req.params.collection, body, (error) => error && console.error(error));
       });
-    } else if (req.query.replace) {
+    } else if (req.query.overwrite) {
       db().collection(req.params.collection).findOneAndReplace({
         id: body.id,
         version: typeof body.version === 'undefined' ? { $exists: false } : body.version,
@@ -127,7 +71,6 @@ router.post('/:collection', validator.collection,
             _id: result.lastErrorObject.upserted
           });
         }
-        produceDownloadRequests(req.params.collection, body, (error) => error && console.error(error));
       });
     } else {
       db().collection(req.params.collection).findOneAndUpdate({
@@ -149,7 +92,6 @@ router.post('/:collection', validator.collection,
           res.status(201).json({
             _id: result.lastErrorObject.upserted
           });
-          produceDownloadRequests(req.params.collection, body, (error) => error && console.error(error));
         }
       });
     }
@@ -163,7 +105,7 @@ router.get('/:collection/:_id', validator.collection, validator._id,
     } catch (error) {
       return value
     }
-  }), validator.checkResult, function (req, res, next) {
+  }).custom((value) => typeof value === 'object').not().isArray(), validator.checkResult, function (req, res, next) {
     db().collection(req.params.collection).findOne({ _id: req.params._id }, { projection: req.query.projection },
       function (error, result) {
         if (error) return next(error);

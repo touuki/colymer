@@ -11,15 +11,13 @@ const config = require('../config').default_storage_options;
 class DefaultStorage {
 
   static getUrl(collection, uploadPath) {
-    if (os.type() == 'Windows_NT') {
-      uploadPath = uploadPath.replace(/[\\:*?"<>|\f\n\r\t\v]/g, '_');
-    }
     return config.url_prefix + path.posix.join('/', collection, uploadPath);
   }
 
-  static getDirectlyUploadOptions(collection, uploadPath) {
+  static getDirectlyUploadOptions(collection, uploadPath, overwrite) {
     const url = new URL('attachment/' + collection, config.api_prefix);
     url.searchParams.set('path', uploadPath);
+    url.searchParams.set('overwrite', overwrite);
     return {
       url: url.href,
       method: 'PUT',
@@ -29,9 +27,10 @@ class DefaultStorage {
     };
   }
 
-  static getFormUploadOptions(collection, uploadPath) {
+  static getFormUploadOptions(collection, uploadPath, overwrite) {
     const url = new URL('attachment/' + collection, config.api_prefix);
     url.searchParams.set('path', uploadPath);
+    url.searchParams.set('overwrite', overwrite);
     return {
       url: url.href,
       method: 'POST',
@@ -55,18 +54,28 @@ class DefaultStorage {
   }
 
   static _getPath(collection, uploadPath) {
-    if (os.type() == 'Windows_NT') {
-      uploadPath = uploadPath.replace(/[\\:*?"<>|\f\n\r\t\v]/g, '_');
-    }
     return path.join(config.directory, collection, uploadPath);
   }
 
   static installRouter(router) {
     const maxFileSize = bytes.parse(config.max_file_size);
 
-    router.post('/:collection', validator.collection, validator.path,
+    router.post('/:collection', validator.collection, validator.path, validator.overwrite,
       header('content-length').custom((value) => parseInt(value) < maxFileSize).optional(),
-      validator.checkResult, multer({
+      validator.checkResult, function (req, res, next) {
+        const pathname = DefaultStorage._getPath(req.params.collection, req.query.path);
+        if (req.query.overwrite) {
+          fs.access(pathname, function (err) {
+            if (err) {
+              next();
+            } else {
+              res.status(409).send();
+            }
+          })
+        } else {
+          next()
+        }
+      }, multer({
         dest: config.tmp_dir,
         limits: {
           files: 1,
@@ -90,9 +99,22 @@ class DefaultStorage {
       }
     );
 
-    router.put('/:collection', validator.collection, validator.path,
+    router.put('/:collection', validator.collection, validator.path, validator.overwrite,
       header('content-length').custom((value) => parseInt(value) < maxFileSize).optional(),
       validator.checkResult, function (req, res, next) {
+        const pathname = DefaultStorage._getPath(req.params.collection, req.query.path);
+        if (req.query.overwrite) {
+          fs.access(pathname, function (err) {
+            if (err) {
+              next();
+            } else {
+              res.status(409).send();
+            }
+          })
+        } else {
+          next()
+        }
+      }, function (req, res, next) {
         const filename = Date.now() + '-' + Math.round(Math.random() * Math.pow(16, 8)).toString(16);
         const tmpPath = path.join(config.tmp_dir, filename);
         const writeStream = fs.createWriteStream(tmpPath);

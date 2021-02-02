@@ -66,14 +66,6 @@ module.exports = checkSchema({
   'attachments.*.filename': {
     in: 'body',
     isString: true,
-    customSanitizer: {
-      options: (value) => value && path.posix.basename(value),
-    },
-    optional: true,
-  },
-  'attachments.*.url': {
-    in: 'body',
-    isURL: true,
     optional: true,
   },
   'attachments.*.content_type': {
@@ -86,18 +78,6 @@ module.exports = checkSchema({
     isURL: true,
     optional: true,
   },
-  'attachments.*.path': {
-    in: 'body',
-    notEmpty: true,
-    isString: true,
-    customSanitizer: {
-      options: (value) => value && path.posix.normalize(value),
-    },
-    custom: {
-      options: (value) => !value.startsWith('../')
-    },
-    optional: true,
-  },
   'attachments.*.metadata': {
     in: 'body',
     isArray: {
@@ -106,6 +86,52 @@ module.exports = checkSchema({
     custom: {
       options: (value) => typeof value === 'object',
     },
+    optional: true,
+  },
+  'attachments.*.persist_info': {
+    in: 'body',
+    isArray: {
+      negated: true,
+    },
+    custom: {
+      options: (value) => typeof value === 'object',
+    },
+    optional: true,
+  },
+  'attachments.*.persist_info.direct_transfer': {
+    in: 'body',
+    isBoolean: true,
+    optional: true
+  },
+  'attachments.*.persist_info.follow_redirect': {
+    in: 'body',
+    isBoolean: true,
+    optional: true
+  },
+  'attachments.*.persist_info.overwrite': {
+    in: 'body',
+    isBoolean: true,
+    optional: true
+  },
+  'attachments.*.persist_info.saved': {
+    in: 'body',
+    isBoolean: true,
+    optional: true
+  },
+  'attachments.*.persist_info.path': {
+    in: 'body',
+    customSanitizer: {
+      options: (value) => value && path.posix.normalize(value),
+    },
+    notEmpty: true,
+    custom: {
+      options: (value) => !value.startsWith('../') && !/[\\:*?"<>|\f\n\r\t\v]/.test(value)
+    },
+    optional: true,
+  },
+  'attachments.*.persist_info.referer': {
+    in: 'body',
+    isURL: true,
     optional: true,
   },
   version: {

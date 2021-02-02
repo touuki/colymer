@@ -64,14 +64,9 @@ paths:
       description: "Insert article."
       operationId: "postArticle"
       parameters:
-        - name: "resolve_attachments"
+        - name: "overwrite"
           in: "query"
-          description: "Whether to process attachments automaticly for HTML content."
-          type: "boolean"
-          default: false
-        - name: "replace"
-          in: "query"
-          description: "Whether to replace an article with the same id and version already exists."
+          description: "Whether to overwrite an article with the same id and version already exists."
           type: "boolean"
           default: false
         - name: "article"
@@ -82,7 +77,7 @@ paths:
             $ref: "#/definitions/Article"
       responses:
         200:
-          description: "Replaced (for replace=true) or already exist (for replace=false)"
+          description: "Overwritten (for overwrite=true) or already exist (for overwrite=false)"
           schema:
             type: "object"
             properties:
@@ -305,22 +300,35 @@ definitions:
         type: "string"
       filename:
         type: "string"
-      url:
-        type: "string"
-        example: "http://example.com/attachment.jpg"
       content_type:
         type: "string"
         example: "image/jpeg"
       original_url:
         type: "string"
         example: "http://example.com/attachment.jpg"
-      path:
-        type: "string"
-        description: "If present, it means the file has already been uploaded."
+      persist_info:
+        type: "object"
+        properties:
+          direct_transfer:
+            type: "boolean"
+          follow_redirect:
+            type: "boolean"
+          overwrite:
+            type: "boolean"
+          saved:
+            type: "boolean"
+          path:
+            type: "string"
+          referer:
+            type: "string"
+          error:
+            type: "string"
       metadata:
         type: "object"
         properties:
           height:
             type: "number"
           width:
+            type: "number"
+          duration:
             type: "number"
