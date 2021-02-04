@@ -14,11 +14,6 @@ router.get('/upload_options/:collection', validator.collection,
       : storage.getDirectlyUploadOptions(req.params.collection, req.query.path, req.query.overwrite));
   });
 
-router.get('/:collection', validator.collection, validator.path, validator.checkResult,
-  function (req, res, next) {
-    res.redirect(storage.getUrl(req.params.collection, req.query.path));
-  });
-
 storage.installRouter(router);
 
 module.exports = router;

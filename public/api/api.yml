@@ -309,7 +309,7 @@ definitions:
       persist_info:
         type: "object"
         properties:
-          direct_transfer:
+          directly_transfer:
             type: "boolean"
           follow_redirect:
             type: "boolean"

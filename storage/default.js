@@ -2,7 +2,6 @@ const path = require('path');
 const fs = require('fs');
 const bytes = require('bytes');
 const multer = require('multer');
-const os = require('os');
 
 const { header } = require('express-validator');
 const validator = require('../validator');

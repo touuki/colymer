@@ -98,7 +98,7 @@ module.exports = checkSchema({
     },
     optional: true,
   },
-  'attachments.*.persist_info.direct_transfer': {
+  'attachments.*.persist_info.directly_transfer': {
     in: 'body',
     isBoolean: true,
     optional: true
@@ -127,7 +127,6 @@ module.exports = checkSchema({
     custom: {
       options: (value) => !value.startsWith('../') && !/[\\:*?"<>|\f\n\r\t\v]/.test(value)
     },
-    optional: true,
   },
   'attachments.*.persist_info.referer': {
     in: 'body',

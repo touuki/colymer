@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+//dtad: directly transferring attachment downloader
+
 const path = require('path');
 const request = require('request');
 const contentDisposition = require('content-disposition');
@@ -214,11 +216,7 @@ async function transfer(data) {
 }
 
 async function finish(data) {
-  let action = 'finish'
-  if (data.error) {
-    action = 'error'
-  }
-  const url = new URL(`download/${nodeId}/${action}`, config.api_prefix);
+  const url = new URL(`download/${nodeId}/finish`, config.api_prefix);
   const method = 'POST';
   const response = await fetch(url, {
     method, agent,

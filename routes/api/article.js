@@ -6,22 +6,30 @@ const { query, matchedData } = require('express-validator');
 const validator = require('../../validator');
 const { db } = require('../../mongo');
 
-router.get('/:collection', validator.collection,
-  query('pipeline').customSanitizer((value) => {
-    try {
-      return JSON.parse(value)
-    } catch (error) {
-      return value
+function produceDownloadRequests(collection, article, callback) {
+  if (!article.attachments) {
+    return callback(null);
+  }
+  const downloadRequests = new Array();
+  for (const attachment of article.attachments) {
+    if (attachment.persist_info && !attachment.persist_info.saved) {
+      downloadRequests.push({
+        collection: collection,
+        article_id: article._id,
+        original_url: attachment.original_url,
+        persist_info: attachment.persist_info,
+      });
     }
-  }).custom((value) => typeof value === 'object'),
-  query('collation').customSanitizer((value) => {
-    try {
-      return JSON.parse(value)
-    } catch (error) {
-      return value
-    }
-  }).custom((value) => typeof value === 'object').not().isArray(), validator.checkResult,
-  function (req, res, next) {
+  }
+  if (downloadRequests.length == 0) {
+    return callback(null);
+  }
+  db().collection('#attachment').insertMany(downloadRequests, { checkKeys: true, ignoreUndefined: true }, callback);
+}
+
+router.get('/:collection', validator.collection, validator.toJsonObjectOrArray('query', 'pipeline'),
+  validator.toJsonObjectOrArray('query', 'collation').not().isArray(),
+  validator.checkResult, function (req, res, next) {
     db().collection(req.params.collection).aggregate(req.query.pipeline, {
       maxTimeMS: 30000,
       collation: req.query.collation
@@ -48,6 +56,7 @@ router.post('/:collection', validator.collection, validator.overwrite,
         res.status(201).json({
           _id: result.insertedId
         });
+        produceDownloadRequests(req.params.collection, body, (error) => error && console.error(error));
       });
     } else if (req.query.overwrite) {
       db().collection(req.params.collection).findOneAndReplace({
@@ -71,6 +80,7 @@ router.post('/:collection', validator.collection, validator.overwrite,
             _id: result.lastErrorObject.upserted
           });
         }
+        produceDownloadRequests(req.params.collection, body, (error) => error && console.error(error));
       });
     } else {
       db().collection(req.params.collection).findOneAndUpdate({
@@ -92,22 +102,18 @@ router.post('/:collection', validator.collection, validator.overwrite,
           res.status(201).json({
             _id: result.lastErrorObject.upserted
           });
+          produceDownloadRequests(req.params.collection, body, (error) => error && console.error(error));
         }
       });
     }
   }
 );
 
-router.get('/:collection/:_id', validator.collection, validator._id,
-  query('projection').customSanitizer((value) => {
-    try {
-      return JSON.parse(value)
-    } catch (error) {
-      return value
-    }
-  }).custom((value) => typeof value === 'object').not().isArray(), validator.checkResult, function (req, res, next) {
-    db().collection(req.params.collection).findOne({ _id: req.params._id }, { projection: req.query.projection },
-      function (error, result) {
+router.get('/:collection/:_id', validator.collection, validator.toObjectId('param', '_id'),
+  validator.toJsonObjectOrArray('query', 'projection').not().isArray(),
+  validator.checkResult, function (req, res, next) {
+    db().collection(req.params.collection).findOne({ _id: req.params._id },
+      { projection: req.query.projection }, function (error, result) {
         if (error) return next(error);
         if (result)
           res.status(200).json(result);
@@ -117,22 +123,21 @@ router.get('/:collection/:_id', validator.collection, validator._id,
   }
 );
 
-router.put('/:collection/:_id', validator.collection, validator._id,
+router.put('/:collection/:_id', validator.collection, validator.toObjectId('param', '_id'),
   validator.checkResult, function (req, res, next) {
-    db().collection(req.params.collection).updateOne({ _id: req.params._id }, req.body, {
-      ignoreUndefined: true
-    }, function (error, result) {
-      if (error) return next(error);
-      if (result.matchedCount) {
-        res.status(204).send();
-      } else {
-        res.status(404).send();
-      }
-    });
+    db().collection(req.params.collection).updateOne({ _id: req.params._id },
+      req.body, { ignoreUndefined: true }, function (error, result) {
+        if (error) return next(error);
+        if (result.matchedCount) {
+          res.status(204).send();
+        } else {
+          res.status(404).send();
+        }
+      });
   }
 );
 
-router.delete('/:collection/:_id', validator.collection, validator._id,
+router.delete('/:collection/:_id', validator.collection, validator.toObjectId('param', '_id'),
   validator.checkResult, function (req, res, next) {
     db().collection(req.params.collection).deleteOne({
       _id: req.params._id
