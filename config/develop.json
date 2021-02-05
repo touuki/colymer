@@ -24,7 +24,6 @@
     "downloader":{
         "api_prefix": "http://localhost:3000/api/",
         "keep_alive": 15,
-        "download_interval": 0,
         "check_interval": 120,
         "parallel_count": 5,
         "options": {

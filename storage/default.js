@@ -5,18 +5,24 @@ const multer = require('multer');
 
 const { header } = require('express-validator');
 const validator = require('../validator');
-const config = require('../config').default_storage_options;
 
 class DefaultStorage {
 
-  static getUrl(collection, uploadPath) {
-    return config.url_prefix + path.posix.join('/', collection, uploadPath);
+  constructor(options) {
+    this.options = { ...options };
+    this.options.tmp_dir = path.isAbsolute(this.options.tmp_dir) ? this.options.tmp_dir :
+      path.join(__dirname, '..', this.options.tmp_dir);
+    this.options.directory = path.isAbsolute(this.options.directory) ? this.options.directory :
+      path.join(__dirname, '..', this.options.directory);
   }
 
-  static getDirectlyUploadOptions(collection, uploadPath, overwrite) {
-    const url = new URL('attachment/' + collection, config.api_prefix);
+  getUrl(collection, uploadPath) {
+    return this.options.url_prefix + path.posix.join('/', collection, uploadPath);
+  }
+
+  getDirectlyUploadOptions(collection, uploadPath) {
+    const url = new URL('attachment/' + collection, this.options.api_prefix);
     url.searchParams.set('path', uploadPath);
-    url.searchParams.set('overwrite', overwrite);
     return {
       url: url.href,
       method: 'PUT',
@@ -26,10 +32,9 @@ class DefaultStorage {
     };
   }
 
-  static getFormUploadOptions(collection, uploadPath, overwrite) {
-    const url = new URL('attachment/' + collection, config.api_prefix);
+  getFormUploadOptions(collection, uploadPath) {
+    const url = new URL('attachment/' + collection, this.options.api_prefix);
     url.searchParams.set('path', uploadPath);
-    url.searchParams.set('overwrite', overwrite);
     return {
       url: url.href,
       method: 'POST',
@@ -42,7 +47,7 @@ class DefaultStorage {
     };
   }
 
-  static _moveFile(pathname, originalPath, callback) {
+  _moveFile(pathname, originalPath, callback) {
     fs.mkdir(path.dirname(pathname), { recursive: true }, function (err) {
       if (err) {
         fs.unlink(originalPath, (error) => error && console.error(error));
@@ -52,18 +57,19 @@ class DefaultStorage {
     });
   }
 
-  static _getPath(collection, uploadPath) {
-    return path.join(config.directory, collection, uploadPath);
+  _getPath(collection, uploadPath) {
+    return path.join(this.options.directory, collection, uploadPath);
   }
 
-  static installRouter(router) {
-    const maxFileSize = bytes.parse(config.max_file_size);
+  installRouter(router) {
+    const self = this;
+    const maxFileSize = bytes.parse(this.options.max_file_size);
 
-    router.post('/:collection', validator.collection, validator.path, validator.overwrite,
+    router.post('/:collection', validator.collection, validator.path, validator.toBoolean('query', 'forbid_overwrite'),
       header('content-length').custom((value) => parseInt(value) < maxFileSize).optional(),
       validator.checkResult, function (req, res, next) {
-        const pathname = DefaultStorage._getPath(req.params.collection, req.query.path);
-        if (req.query.overwrite) {
+        const pathname = self._getPath(req.params.collection, req.query.path);
+        if (req.query.forbid_overwrite) {
           fs.access(pathname, function (err) {
             if (err) {
               next();
@@ -75,7 +81,7 @@ class DefaultStorage {
           next()
         }
       }, multer({
-        dest: config.tmp_dir,
+        dest: this.options.tmp_dir,
         limits: {
           files: 1,
           fields: 0,
@@ -90,19 +96,19 @@ class DefaultStorage {
             }]
           });
         }
-        const pathname = DefaultStorage._getPath(req.params.collection, req.query.path);
-        DefaultStorage._moveFile(pathname, req.file.path, function (err) {
+        const pathname = self._getPath(req.params.collection, req.query.path);
+        self._moveFile(pathname, req.file.path, function (err) {
           if (err) return next(err);
           return res.status(201).send();
         });
       }
     );
 
-    router.put('/:collection', validator.collection, validator.path, validator.overwrite,
+    router.put('/:collection', validator.collection, validator.path, validator.toBoolean('query', 'forbid_overwrite'),
       header('content-length').custom((value) => parseInt(value) < maxFileSize).optional(),
       validator.checkResult, function (req, res, next) {
-        const pathname = DefaultStorage._getPath(req.params.collection, req.query.path);
-        if (req.query.overwrite) {
+        const pathname = self._getPath(req.params.collection, req.query.path);
+        if (req.query.forbid_overwrite) {
           fs.access(pathname, function (err) {
             if (err) {
               next();
@@ -115,9 +121,9 @@ class DefaultStorage {
         }
       }, function (req, res, next) {
         const filename = Date.now() + '-' + Math.round(Math.random() * Math.pow(16, 8)).toString(16);
-        const tmpPath = path.join(config.tmp_dir, filename);
+        const tmpPath = path.join(self.options.tmp_dir, filename);
         const writeStream = fs.createWriteStream(tmpPath);
-        const pathname = DefaultStorage._getPath(req.params.collection, req.query.path);
+        const pathname = self._getPath(req.params.collection, req.query.path);
         let length = 0;
 
         writeStream.on('error', function (error) {
@@ -127,7 +133,7 @@ class DefaultStorage {
           fs.unlink(tmpPath, (err) => err && console.error(err));
         });
         writeStream.on('finish', function () {
-          DefaultStorage._moveFile(pathname, tmpPath, function (err) {
+          self._moveFile(pathname, tmpPath, function (err) {
             if (err) return next(err);
             return res.status(201).send();
           });

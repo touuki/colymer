@@ -20,9 +20,14 @@ module.exports = {
       return value
     }
   }).custom((value) => typeof value === 'object'),
-  path: query('path').customSanitizer((value) => value && path.posix.normalize(value)).notEmpty()
+  toBoolean: (location, field) =>
+    express_validator[location](field).customSanitizer(value => value ?
+      value == 1 || value.toLowerCase() == 'true' : false),
+  toBooleanOrUndefined: (location, field) =>
+    express_validator[location](field).customSanitizer(value => value ?
+      value == 1 || value.toLowerCase() == 'true' : undefined),
+  path: query('path').customSanitizer((value) => value ? path.posix.normalize(value) : '').notEmpty()
     .custom((value) => !value.startsWith('../') && !/[\\:*?"<>|\f\n\r\t\v]/.test(value)),
-  overwrite: query('overwrite').customSanitizer(value => value == 1 || value && value.toLowerCase() == 'true'),
   checkResult: function (req, res, next) {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {

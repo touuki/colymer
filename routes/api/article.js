@@ -43,7 +43,7 @@ router.get('/:collection', validator.collection, validator.toJsonObjectOrArray('
   }
 );
 
-router.post('/:collection', validator.collection, validator.overwrite,
+router.post('/:collection', validator.collection, validator.toBoolean('query','overwrite'),
   validator.article, validator.checkResult, function (req, res, next) {
     const body = matchedData(req, { locations: ['body'] });
     if (typeof body.id === 'undefined') {

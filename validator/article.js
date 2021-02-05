@@ -121,7 +121,7 @@ module.exports = checkSchema({
   'attachments.*.persist_info.path': {
     in: 'body',
     customSanitizer: {
-      options: (value) => value && path.posix.normalize(value),
+      options: (value) => value ? path.posix.normalize(value) : '',
     },
     notEmpty: true,
     custom: {

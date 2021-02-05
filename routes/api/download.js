@@ -50,7 +50,7 @@ router.delete('/:node_id', validator.toObjectId('param', 'node_id'), validator.c
 );
 
 router.post('/:node_id/accept', validator.toObjectId('param', 'node_id'),
-  query('directly_transfer').customSanitizer(value => value ? value == 1 || value.toLowerCase() == 'true' : undefined),
+  validator.toBooleanOrUndefined('query', 'directly_transfer'),
   validator.checkResult, function (req, res, next) {
     db().collection('#attachment').findOneAndUpdate({
       accept: { $exists: false },
@@ -65,8 +65,10 @@ router.post('/:node_id/accept', validator.toObjectId('param', 'node_id'),
       checkKeys: true,
     }, function (error, result) {
       if (error) return next(error);
-      if (result.value){
-        result.value.upload_options = storage.getDirectlyUploadOptions(result.value.collection, result.value.persist_info.path)
+      if (result.value) {
+        result.value.upload_options = storage.getDirectlyUploadOptions(result.value.collection,
+          result.value.persist_info.path);
+        result.value.url = storage.getUrl(result.value.collection, result.value.persist_info.path);
         res.status(200).json(result.value);
       }
       else
@@ -87,13 +89,13 @@ router.post('/:node_id/finish/:task_id', validator.toObjectId('param', 'node_id'
               'attachments.$[element].persist_info.error': req.query.error,
             }
           } : {
-            $set: {
-              'attachments.$[element].persist_info.saved': true,
-            },
-            $unset: {
-              'attachments.$[element].persist_info.error': '',
-            }
-          }, {
+              $set: {
+                'attachments.$[element].persist_info.saved': true,
+              },
+              $unset: {
+                'attachments.$[element].persist_info.error': '',
+              }
+            }, {
             arrayFilters: [{
               'element.original_url': result.value.original_url
             }],
@@ -104,9 +106,8 @@ router.post('/:node_id/finish/:task_id', validator.toObjectId('param', 'node_id'
           });
         } else
           res.status(404).send();
-      });
-
-
+      }
+    );
   }
 );
 
