@@ -16,18 +16,18 @@
     "default_storage_options": {
         "tmp_dir": "tmp/",
         "api_prefix": "http://localhost:3000/api/",
-        "url_prefix": "/attachment",
+        "url_prefix": "http://localhost:3000/attachment/",
         "directory": "public/attachment",
         "max_file_size": "5GB"
     },
     "downloader_timeout": 300,
     "downloader":{
         "api_prefix": "http://localhost:3000/api/",
-        "keep_alive": 15,
-        "check_interval": 120,
+        "keep_alive": 120,
+        "check_interval": 60,
         "parallel_count": 5,
+        "pac": "proxy.pac",
         "options": {
-            "proxy": "http://localhost:7070",
             "headers":{
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36"
             }

@@ -11,7 +11,6 @@ const https = require('https');
 const pac = require('pac-resolver');
 
 const config = require('../config').downloader;
-const storage = require('../storage');
 
 let nodeId;
 let running_tasks = 0;
@@ -133,18 +132,32 @@ async function transfer(data) {
       return null;
     }
   }
-  return new Promise((resolve, reject) => {
-    const headers = {
-      ...config.options.headers,
-    };
-    if (data.persist_info.referer) {
-      headers['Referer'] = data.persist_info.referer;
-    }
+  const headers = {
+    ...config.options.headers,
+  };
+  if (data.persist_info.referer) {
+    headers['Referer'] = data.persist_info.referer;
+  }
 
-    const options = { ...config.options, url: data.original_url, headers };
-    if (!data.persist_info.follow_redirect) {
-      options.followRedirect = false;
+  const options = { ...config.options, url: data.original_url, headers };
+  if (!data.persist_info.follow_redirect) {
+    options.followRedirect = false;
+  }
+  if (FindProxyForURL) {
+    const proxys = (await FindProxyForURL(data.original_url)).split(';');
+    for (const proxy of proxys) {
+      const [protocol, address] = proxy.trim().split(' ');
+      if (protocol == 'DIRECT') {
+        delete options.proxy;
+        break;
+      } else if (protocol == 'PROXY' || protocol == 'HTTP') {
+        options.proxy = `http://${address}`;
+        break;
+      }
     }
+  }
+
+  return new Promise((resolve, reject) => {
     const req = request.get(options);
 
     req.on('error', reject);

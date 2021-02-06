@@ -14,10 +14,12 @@ class DefaultStorage {
       path.join(__dirname, '..', this.options.tmp_dir);
     this.options.directory = path.isAbsolute(this.options.directory) ? this.options.directory :
       path.join(__dirname, '..', this.options.directory);
+    this.options.url_prefix += this.options.url_prefix.endsWith('/') ? '' : '/';
+    this.options.api_prefix += this.options.api_prefix.endsWith('/') ? '' : '/';
   }
 
   getUrl(collection, uploadPath) {
-    return this.options.url_prefix + path.posix.join('/', collection, uploadPath);
+    return new URL(path.posix.join(collection, uploadPath), this.options.url_prefix).href;
   }
 
   getDirectlyUploadOptions(collection, uploadPath) {
