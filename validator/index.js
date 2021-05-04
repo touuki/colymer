@@ -5,7 +5,8 @@ const { ObjectId } = require('mongodb');
 
 module.exports = {
   article: require('./article'),
-  collection: param('collection').notEmpty().matches(/^[a-zA-Z0-9][a-zA-Z0-9\-_]*$/),
+  chain_block: require('./chain_block'),
+  isAlphanumeric: (location, field) => express_validator[location](field).notEmpty().matches(/^[a-zA-Z0-9][a-zA-Z0-9\-_]*$/),
   toObjectId: (location, field) => express_validator[location](field).customSanitizer((value) => {
     try {
       return new ObjectId(value);

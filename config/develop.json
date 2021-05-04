@@ -1,12 +1,12 @@
 {
     "mongodb": {
         "url": "mongodb://192.168.30.1:27017/",
-        "db": "colymer",
+        "db": "colymer-test",
         "options": {
-            "authSource": "colymer",
+            "authSource": "colymer-test",
             "auth": {
-                "user": "colymer",
-                "password": "colymer"
+                "user": "colymer-test",
+                "password": "colymer-test"
             },
             "poolSize": 5,
             "useUnifiedTopology": true

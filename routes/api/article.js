@@ -27,7 +27,9 @@ function produceDownloadRequests(collection, article, callback) {
   db().collection('#attachment').insertMany(downloadRequests, { checkKeys: true, ignoreUndefined: true }, callback);
 }
 
-router.get('/:collection', validator.collection, validator.toJsonObjectOrArray('query', 'pipeline'),
+router.get('/:collection',
+  validator.isAlphanumeric('param', 'collection'),
+  validator.toJsonObjectOrArray('query', 'pipeline'),
   validator.toJsonObjectOrArray('query', 'collation').not().isArray(),
   validator.checkResult, function (req, res, next) {
     db().collection(req.params.collection).aggregate(req.query.pipeline, {
@@ -43,7 +45,9 @@ router.get('/:collection', validator.collection, validator.toJsonObjectOrArray('
   }
 );
 
-router.post('/:collection', validator.collection, validator.toBoolean('query','overwrite'),
+router.post('/:collection',
+  validator.isAlphanumeric('param', 'collection'),
+  validator.toBoolean('query', 'overwrite'),
   validator.article, validator.checkResult, function (req, res, next) {
     const body = matchedData(req, { locations: ['body'] });
     if (typeof body.id === 'undefined') {
@@ -109,7 +113,9 @@ router.post('/:collection', validator.collection, validator.toBoolean('query','o
   }
 );
 
-router.get('/:collection/:_id', validator.collection, validator.toObjectId('param', '_id'),
+router.get('/:collection/:_id',
+  validator.isAlphanumeric('param', 'collection'),
+  validator.toObjectId('param', '_id'),
   validator.toJsonObjectOrArray('query', 'projection').not().isArray(),
   validator.checkResult, function (req, res, next) {
     db().collection(req.params.collection).findOne({ _id: req.params._id },
@@ -123,7 +129,9 @@ router.get('/:collection/:_id', validator.collection, validator.toObjectId('para
   }
 );
 
-router.put('/:collection/:_id', validator.collection, validator.toObjectId('param', '_id'),
+router.put('/:collection/:_id',
+  validator.isAlphanumeric('param', 'collection'),
+  validator.toObjectId('param', '_id'),
   validator.checkResult, function (req, res, next) {
     db().collection(req.params.collection).updateOne({ _id: req.params._id },
       req.body, { ignoreUndefined: true }, function (error, result) {
@@ -137,7 +145,9 @@ router.put('/:collection/:_id', validator.collection, validator.toObjectId('para
   }
 );
 
-router.delete('/:collection/:_id', validator.collection, validator.toObjectId('param', '_id'),
+router.delete('/:collection/:_id',
+  validator.isAlphanumeric('param', 'collection'),
+  validator.toObjectId('param', '_id'),
   validator.checkResult, function (req, res, next) {
     db().collection(req.params.collection).deleteOne({
       _id: req.params._id

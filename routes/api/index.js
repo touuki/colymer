@@ -13,5 +13,6 @@ router.use(function (req, res, next) {
 router.use('/article', require('./article'));
 router.use('/attachment', require('./attachment'));
 router.use('/download', require('./download'));
+router.use('/chain_block', require('./chain_block'))
 
 module.exports = router;

@@ -22,6 +22,12 @@ parameters:
     description: "Document _id"
     required: true
     type: "string"
+  chain_id:
+    name: "chain_id"
+    in: "path"
+    description: "Chain ID"
+    required: true
+    type: "string"
 produces:
   - "application/json"
 consumes:
@@ -252,10 +258,107 @@ paths:
           description: "Invalid Input"
         500:
           description: "Error"
+  /chain_block/{chain_id}/recent:
+    parameters:
+      - $ref: "#/parameters/chain_id"
+      - name: "max_top_id"
+        in: "query"
+        description: "Max top_id"
+        required: false
+        type: "string"
+    get:
+      tags:
+        - chain_block
+      summary: "Get recent block"
+      description: "Get recent block of chain_id"
+      operationId: "getRecentBlock"
+      responses:
+        200:
+          description: "OK"
+          schema:
+            $ref: "#/definitions/ChainBlock"
+        400:
+          description: "Invalid Input"
+        404:
+          description: "Not Found"
+        500:
+          description: "Error"
+  /chain_block/{chain_id}:
+    parameters:
+      - $ref: "#/parameters/chain_id"
+    post:
+      tags:
+        - chain_block
+      summary: "Insert chain block"
+      description: "Insert a new block of chain_id"
+      operationId: "insertBlock"
+      parameters:
+        - name: "block"
+          in: "body"
+          description: "Block"
+          required: true
+          schema:
+            $ref: "#/definitions/ChainBlock"
+      responses:
+        201:
+          description: "Created"
+          schema:
+            type: "object"
+            properties:
+              _id:
+                type: "string"
+        400:
+          description: "Invalid Input"
+        500:
+          description: "Error"
+  /chain_block/{chain_id}/{_id}:
+    parameters:
+      - $ref: "#/parameters/chain_id"
+      - $ref: "#/parameters/_id"
+    put:
+      tags:
+        - chain_block
+      summary: "Update chain block"
+      description: "Update chain block"
+      operationId: "updateBlock"
+      parameters:
+        - name: "block"
+          in: "body"
+          description: "Block"
+          required: true
+          schema:
+            $ref: "#/definitions/ChainBlock"
+      responses:
+        204:
+          description: "Updated"
+        400:
+          description: "Invalid Input"
+        404:
+          description: "Not Found"
+        500:
+          description: "Error"
+    delete:
+      tags:
+        - chain_block
+      summary: "Delete chain block"
+      description: "Delete chain block"
+      operationId: "deleteBlock"
+      responses:
+        204:
+          description: "OK"
+        400:
+          description: "Invalid Input"
+        404:
+          description: "Not Found"
+        500:
+          description: "Error"
 definitions:
   Article:
     type: "object"
     properties:
+      _id:
+        type: "string"
+        readOnly: true
       id:
         type: "string"
         example: "322"
@@ -332,3 +435,20 @@ definitions:
             type: "number"
           duration:
             type: "number"
+  ChainBlock:
+    type: "object"
+    properties:
+      _id:
+        type: "string"
+        readOnly: true
+      chain_id:
+        type: "string"
+        readOnly: true
+      top_id:
+        type: "string"
+      bottom_id:
+        type: "string"
+      bottom_cursor:
+        type: "string"
+      has_next:
+        type: "boolean"

@@ -67,7 +67,10 @@ class DefaultStorage {
     const self = this;
     const maxFileSize = bytes.parse(this.options.max_file_size);
 
-    router.post('/:collection', validator.collection, validator.path, validator.toBoolean('query', 'forbid_overwrite'),
+    router.post('/:collection',
+      validator.isAlphanumeric('param', 'collection'),
+      validator.path,
+      validator.toBoolean('query', 'forbid_overwrite'),
       header('content-length').custom((value) => parseInt(value) < maxFileSize).optional(),
       validator.checkResult, function (req, res, next) {
         const pathname = self._getPath(req.params.collection, req.query.path);
@@ -106,7 +109,10 @@ class DefaultStorage {
       }
     );
 
-    router.put('/:collection', validator.collection, validator.path, validator.toBoolean('query', 'forbid_overwrite'),
+    router.put('/:collection',
+      validator.isAlphanumeric('param', 'collection'),
+      validator.path,
+      validator.toBoolean('query', 'forbid_overwrite'),
       header('content-length').custom((value) => parseInt(value) < maxFileSize).optional(),
       validator.checkResult, function (req, res, next) {
         const pathname = self._getPath(req.params.collection, req.query.path);
