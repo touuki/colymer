@@ -7,7 +7,6 @@ const validator = require('../../validator');
 const { db } = require('../../mongo');
 
 router.get('/:chain_id/recent',
-  validator.isAlphanumeric('param', 'chain_id'),
   query('max_top_id').isNumeric({ no_symbols: true }).optional(),
   validator.checkResult, function (req, res, next) {
     db().collection('#chain_block').findOne({
@@ -32,12 +31,12 @@ router.get('/:chain_id/recent',
 );
 
 router.post('/:chain_id',
-  validator.isAlphanumeric('param', 'chain_id'),
   validator.chain_block,
   validator.checkResult, function (req, res, next) {
     const body = matchedData(req, {
-      locations: ['body', 'params']
+      locations: ['body']
     });
+    body.chain_id = req.params.chain_id
 
     if (body.top_id - body.bottom_id < 0) {
       res.status(400).json({
@@ -61,7 +60,6 @@ router.post('/:chain_id',
 );
 
 router.put('/:chain_id/:_id',
-  validator.isAlphanumeric('param', 'chain_id'),
   validator.toObjectId('param', '_id'),
   validator.chain_block,
   validator.checkResult, function (req, res, next) {
@@ -93,7 +91,6 @@ router.put('/:chain_id/:_id',
 );
 
 router.delete('/:chain_id/:_id',
-  validator.isAlphanumeric('param', 'chain_id'),
   validator.toObjectId('param', '_id'),
   validator.checkResult, function (req, res, next) {
     db().collection('#chain_block').deleteOne({
