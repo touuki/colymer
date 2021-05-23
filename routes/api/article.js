@@ -30,7 +30,7 @@ function produceDownloadRequests(collection, article, callback) {
 router.get('/:collection',
   validator.isAlphanumeric('param', 'collection'),
   validator.toJsonObjectOrArray('query', 'pipeline'),
-  validator.toJsonObjectOrArray('query', 'collation').not().isArray(),
+  validator.toJsonObjectOrArray('query', 'collation').not().isArray().optional(),
   validator.checkResult, function (req, res, next) {
     db().collection(req.params.collection).aggregate(req.query.pipeline, {
       maxTimeMS: 30000,

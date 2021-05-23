@@ -173,11 +173,9 @@ async function transfer(data) {
               reject(new Error(`HTTP Code: ${response.statusCode} ${response.statusMessage} Body: ${body}`));
             }
           }));
-        } else if (res.statusCode >= 300 && res.statusCode < 400) {
+        } else {
           req.destroy();
           resolve(`HTTP Code: ${response.statusCode} ${response.statusMessage} location: ${res.headers.location}`);
-        } else {
-          req.destroy(new Error(`HTTP Code: ${res.statusCode} ${res.statusMessage}`));
         }
       } catch (error) {
         reject(error)
