@@ -175,7 +175,7 @@ async function transfer(data) {
           }));
         } else {
           req.destroy();
-          resolve(`HTTP Code: ${response.statusCode} ${response.statusMessage} location: ${res.headers.location}`);
+          resolve(`HTTP Code: ${res.statusCode} ${res.statusMessage} location: ${res.headers.location}`);
         }
       } catch (error) {
         reject(error)
