@@ -20,6 +20,12 @@
         "directory": "public/attachment",
         "max_file_size": "5GB"
     },
+    "aliyun_oss_storage_options": {
+        "accessKeyId": "",
+        "accessKeySecret": "",
+        "endpoint": "",
+        "bucket": "colymer"
+    },
     "downloader_timeout": 300,
     "downloader":{
         "api_prefix": "http://localhost:3000/api/",

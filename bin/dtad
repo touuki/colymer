@@ -5,7 +5,7 @@
 const fs = require('fs');
 const path = require('path');
 const request = require('request');
-const fetch = require('node-fetch');
+const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
 const http = require('http');
 const https = require('https');
 const pac = require('pac-resolver');
@@ -165,6 +165,16 @@ async function transfer(data) {
     req.on('response', function (res) {
       try {
         if (res.statusCode == 200) {
+          if (!data.upload_options.headers) {
+            data.upload_options.headers = {}
+          }
+          if (res.caseless.has('content-length')) {
+            data.upload_options.headers['Content-Length'] = res.headers[res.caseless.has('content-length')]
+          }
+          if (res.caseless.has('transfer-encoding')) {
+            data.upload_options.headers['Transfer-Encoding'] = res.headers[res.caseless.has('transfer-encoding')]
+          }
+          res.headers = {} // remove response headers to avoid override headers in upload_options 
           req.pipe(request(data.upload_options, function (error, response, body) {
             if (error) return reject(error);
             if (response.statusCode >= 200 && response.statusCode < 300) {

@@ -61,8 +61,7 @@ router.post('/:node_id/accept', validator.toObjectId('param', 'node_id'),
         accept: req.params.node_id
       }
     }, {
-      ignoreUndefined: true,
-      checkKeys: true,
+      ignoreUndefined: true
     }, function (error, result) {
       if (error) return next(error);
       if (result.value) {

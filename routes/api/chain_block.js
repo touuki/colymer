@@ -48,8 +48,7 @@ router.post('/:chain_id',
     }
 
     db().collection('#chain_block').insertOne(body, {
-      ignoreUndefined: true,
-      checkKeys: true,
+      ignoreUndefined: true
     }, function (error, result) {
       if (error) return next(error);
       res.status(201).json({

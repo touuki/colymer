@@ -1,6 +1,6 @@
 // Put user rules line by line in this file.
 // See https://adblockplus.org/en/filter-cheatsheet
-var proxy = "PROXY localhost:18080";
+var proxy = "PROXY localhost:8080";
 
 var rules = [
   "||cdninstagram.com",

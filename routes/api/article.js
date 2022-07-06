@@ -52,8 +52,7 @@ router.post('/:collection',
     const body = matchedData(req, { locations: ['body'] });
     if (typeof body.id === 'undefined') {
       db().collection(req.params.collection).insertOne(body, {
-        ignoreUndefined: true,
-        checkKeys: true,
+        ignoreUndefined: true
       }, function (error, result) {
         if (error) return next(error);
         body._id = result.insertedId;
@@ -69,8 +68,7 @@ router.post('/:collection',
       }, body, {
         projection: { _id: 1 },
         upsert: true,
-        ignoreUndefined: true,
-        checkKeys: true,
+        ignoreUndefined: true
       }, function (error, result) {
         if (error) return next(error);
         if (result.lastErrorObject.updatedExisting) {
@@ -93,8 +91,7 @@ router.post('/:collection',
       }, { $setOnInsert: body }, {
         projection: { _id: 1 },
         upsert: true,
-        ignoreUndefined: true,
-        checkKeys: true,
+        ignoreUndefined: true
       }, function (error, result) {
         if (error) return next(error);
         if (result.lastErrorObject.updatedExisting) {
