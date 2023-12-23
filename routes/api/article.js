@@ -35,12 +35,9 @@ router.get('/:collection',
     db().collection(req.params.collection).aggregate(req.query.pipeline, {
       maxTimeMS: 30000,
       collation: req.query.collation
-    }, function (error, cursor) {
+    }).toArray(function (error, data) {
       if (error) return next(error);
-      cursor.toArray(function (error, data) {
-        if (error) return next(error);
-        res.status(200).json(data);
-      })
+      res.status(200).json(data);
     })
   }
 );
