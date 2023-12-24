@@ -16,6 +16,13 @@ router.get('/upload_options/:collection',
   }
 );
 
+
+router.get('/:collection', validator.path, validator.checkResult,
+  function (req, res, next) {
+    res.redirect(storage.getUrl(req.params.collection, req.query.path));
+  }
+);
+
 storage.installRouter(router);
 
 module.exports = router;
