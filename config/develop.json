@@ -1,4 +1,5 @@
 {
+    "body_limit": "16mb",
     "mongodb": {
         "url": "mongodb://192.168.30.1:27017/",
         "db": "colymer-test",
@@ -12,7 +13,6 @@
             "useUnifiedTopology": true
         }
     },
-    "storage": "default",
     "default_storage_options": {
         "tmp_dir": "tmp/",
         "api_prefix": "http://localhost:3000/api/",

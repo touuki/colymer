@@ -19,7 +19,6 @@
     "mongodb": "^4.7.0",
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
-    "node-fetch": "^3.2.6",
     "pac-resolver": "^5.0.1",
     "pug": "^3.0.2",
     "request": "^2.88.2"
