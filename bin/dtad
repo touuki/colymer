@@ -14,7 +14,7 @@ const config = require('../config').downloader;
 let nodeId;
 let running_tasks = 0;
 
-const FindProxyForURL = config.pac ? pac(fs.readFileSync(path.isAbsolute(config.pac) ?
+const FindProxyForURL = config.pac ? pac.createPacResolver(fs.readFileSync(path.isAbsolute(config.pac) ?
   config.pac : path.join(__dirname, '..', config.pac))) : undefined;
 
 const httpAgent = new http.Agent({
